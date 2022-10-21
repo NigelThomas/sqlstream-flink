@@ -1,0 +1,5 @@
+*.run
+*.tgz
+*.gz
+.idea
+*.csv

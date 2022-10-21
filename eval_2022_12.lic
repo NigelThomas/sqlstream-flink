@@ -1,0 +1,9 @@
+#Please Do not delete this comment line.
+INCREMENT engine sqlstreamd 6.0 5-dec-2022 uncounted \
+	VENDOR_STRING="name: eval max-threads:0 installation-id:null \
+	license-check-period:2h usage-check-period:never \
+	usage-report-period:never throttle-when:never" HOSTID=ANY \
+	ISSUER="SQLstream Inc." ISSUED=5-oct-2022 START=4-oct-2022 \
+	SIGN="0D79 C36E 7C61 675E 1293 53E7 69C9 06EA 4E4B 093D 0CE5 \
+	D6F5 9E40 9F04 3869 18C2 8238 4C9E A78C 7BFF 9C18 E8AD F95C \
+	0926 B9CA F104 DA68 28F2 CB51 E23F" SIGN2=F9A892F2C322
