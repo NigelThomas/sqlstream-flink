@@ -217,14 +217,14 @@ The benchmark expects that SQLstream and Flink are already installed on the host
 | `.gitignore` | gitignore file
 | `README.md` | This file
 | `assets` | Directory containing a development build of SQLstream s-Server
-| `catalog.distributed.sql` | UNKNOWN 
+| `catalog.distributed.sql` | TBA 
 | `edrgen.md` | README for `edrgen.py`
 | `edrgen.py` | The data generator for these benchmark tests
 | `environment.sh` | script to set environment for SQLstream and Flink
 | `eval_2022_12.lic` | a SQLstream license file
 | `flink.sql` | The Flink SQL script for creating the test schema
-| `repro.sql` | UNKNOWN
-| `run.distributed.sql` | UNKNOWN
+| `repro.sql` | TBA
+| `run.distributed.sql` | TBA
 | `runSetup.sh` | script to install SQLstream and Flink
 | `runTest.sh` | script to read from any one of the test views in SQLstream or Flink
 | `sqlstream.sql` | The SQLstream SQL script for creating the test schema
