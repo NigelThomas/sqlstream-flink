@@ -1,4 +1,3 @@
-alter session set "llvm.enabled" = 'true';
 
 CREATE OR REPLACE SCHEMA EDR;
 ALTER PUMP EDR.* STOP;

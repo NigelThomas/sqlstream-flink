@@ -14,6 +14,5 @@ ALTER PUMP
      , EDR.Flows_pump_1 , EDR.p1
    START;
 
-alter session set "llvm.enabled" = 'true';
 
 SELECT STREAM AVG(RPS) OVER (RANGE UNBOUNDED PRECEDING) FROM (select stream count(*) as rps from EDR.datarate_view as s group by floor(s.rowtime to second));

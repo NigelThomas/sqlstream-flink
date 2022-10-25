@@ -72,7 +72,7 @@ case "$result" in
         echo "WARNING: Unable to download SQLstream s-Server $SQLSTREAM_MAJOR_VERSION from https://downloads.sqlstream.com/$SQLSTREAM_MAJOR_VERSION/$sserverInstaller"
         ;;
     *)
-        echo "... Installing $sserverInstallerDir/$sserverIinstaller"
+        echo "... Installing $sserverInstallerDir/$sserverInstaller"
         $sserverInstallerDir/$sserverInstaller --mode unattended --email nouser@acompany.com --company acompany
         echo "aspen.sched.license.path=$SCRIPT_DIR" > $SQLSTREAM_HOME/aspen.custom.properties
         echo "SQLstream s-Server $SQLSTREAM_VERSION installed"

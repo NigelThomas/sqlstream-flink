@@ -142,25 +142,18 @@ The benchmark expects that SQLstream and Flink are already installed on the host
     ```
     source environment.sh
     ```
-1. Start s-Server
-    ```
-    $SQLSTREAM_HOME/bin/s-Server --daemon &
-    ```
-   * this starts the daemon in the background
-1. Create the SQLstream schema - WHY DO WE NEED TO RECREATE?
-    ```
-    $HOME/sqlstream/8.1.1*/s-Server/bin/sqllineClient --incremental=true --run=sqlstream.sql
-    ```
 2. Run the throughput query on any one of the views mentioned in the earlier section 
 (`Parse_view`,`Projection_view`,`Agg_view`,`Join_view`,`Join_n_Agg_view`)
     ```
     ./runTest.sh SQLSTREAM <viewname> ## e.g., ./runTest.sh SQLSTREAM Agg_view
     ```
+   * The `runTest.sh` script will stop the Flink cluster and start s-Server (if necessary)
+   * The script reloads the schema for each run
    * Repeat tests with each view in turn.
    * The second column in the output shows rows/second
-   * While tests are running, you may monitor physical memory and CPU% using the `top` or `iostat` commands. 
+   * While tests are running, you may monitor physical memory and CPU% using the `top` or `vmstat` commands. 
    * use Cntrl-C to stop test
-3. Stop s-Server:
+3. Finally, stop s-Server:
     ```
     kill -TERM `jps | grep AspenVJdbc | awk '{print $1}'`
     ```
@@ -170,19 +163,17 @@ The benchmark expects that SQLstream and Flink are already installed on the host
     ```
     source environment.sh
     ```
-1. Start the Flink cluster; it runs as a deamon in the background:
-    ```
-    $FLINK_HOME/bin/start-cluster.sh
-    ```
-1. Install the schema and run the throughput query on any one of the views mentioned in the earlier section. Repeat tests with different view names (`Parse_view`,`Projection_view`,`Agg_view`,`Join_view`,`Join_n_Agg_view`)
+2. Install the schema and run the throughput query on any one of the views mentioned in the earlier section. Repeat tests with different view names (`Parse_view`,`Projection_view`,`Agg_view`,`Join_view`,`Join_n_Agg_view`)
     ```
     $ ./runTest.sh FLINK <viewname> 
     ```
-   * While tests are running, you may monitor Physical memory used and CPU% using the  `top` or  `iostat` commands. 
+   * The `runTest.sh` script will stop s-Server ans start the Flink cluster (if necessary)
+   * The script reloads the schema for each run
+   * While tests are running, you may monitor Physical memory used and CPU% using the  `top` or  `vmstat` commands. 
    * The second column in the output shows rows/second
    * use Cntrl-C to stop test
-1. Repeat tests as required
-1. Stop the Flink cluster:
+3. Repeat tests as required
+4. Stop the Flink cluster:
     ```
     $FLINK_HOME/bin/stop-cluster.sh
     ```
