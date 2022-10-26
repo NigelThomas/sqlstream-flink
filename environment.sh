@@ -52,7 +52,8 @@ function stopFlink() {
 }
 
 function startFlink() {
-    # just start -the script takes care of it
+    # start-cluster.sh is not idempotent, so stop and start for cleanliness / repeatability
+    $FLINK_HOME/bin/stop-cluster.sh
     $FLINK_HOME/bin/start-cluster.sh
 }
 

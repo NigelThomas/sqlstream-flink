@@ -1,7 +1,7 @@
 SET 'sql-client.execution.result-mode'='TABLEAU';
 SET 'execution.runtime-mode' = 'streaming';
 
-CREATE OR REPLACE TABLE Flows_fs
+CREATE OR REPLACE TABLE flows_fs
 (
 load_ts VARCHAR(32),
 event_time VARCHAR(32),
@@ -88,7 +88,7 @@ WITH (
 'csv.disable-quote-character' = 'true'
 );
 
-CREATE TABLE Sessions_fs
+CREATE TABLE sessions_fs
 (
 load_ts VARCHAR(32),
 sessionid VARCHAR(8),
@@ -134,7 +134,7 @@ gwnodeid VARCHAR(16),
 gwplmnidmcc VARCHAR(8),
 gwplmnidmnc VARCHAR(8),
 recordtriggercause VARCHAR(4),
-uplinkoctets BIGINT,
+uplinkoctets VARCHAR(16),
 uplinkpackets VARCHAR(16),
 downlinkoctets VARCHAR(16),
 downlinkpackets VARCHAR(16),
@@ -203,58 +203,70 @@ WITH(
 'csv.disable-quote-character' = 'true'
 );
 
-CREATE OR REPLACE VIEW Parse_view AS
-SELECT * FROM Flows_fs;
+CREATE OR REPLACE VIEW parse_view AS
+SELECT * FROM flows_fs;
 
-CREATE OR REPLACE VIEW Step_1 AS
+CREATE OR REPLACE VIEW flows_step_1 AS
     SELECT sessionid, eventtime,
         CAST(uplinkoctets AS BIGINT) as uplinkoctets, CAST(downlinkoctets AS BIGINT) as downlinkoctets,
         CAST(uplinkpackets AS BIGINT) as uplinkpackets, CAST(downlinkpackets AS BIGINT) as downlinkpackets,
         CAST(uplinkdropoctets AS BIGINT) as uplinkdropoctets, CAST(downlinkdropoctets AS BIGINT) as downlinkdropoctets,
         CAST(uplinkdroppackets AS BIGINT) as uplinkdroppackets, CAST(downlinkdroppackets AS BIGINT) as downlinkdroppackets
-FROM Flows_fs;
+FROM flows_fs;
 
-CREATE OR REPLACE VIEW Step_2 AS
-SELECT sessionid, eventtime, ecgieci
-from Sessions_fs;
+CREATE OR REPLACE VIEW sessions_step_1 AS
+SELECT sessionid
+     , eventtime
+     , ecgieci
+from sessions_fs;
 
-CREATE OR REPLACE VIEW Step_3 AS
-    SELECT sessionid as sessionid, eventtime, uplinkoctets + downlinkoctets + uplinkdropoctets + downlinkdropoctets AS Octets, uplinkpackets + downlinkpackets + uplinkdroppackets + downlinkdroppackets AS Packets
-    FROM Step_1 AS input;
+CREATE OR REPLACE VIEW flows_step_2 AS
+    SELECT sessionid as sessionid
+         , eventtime
+         , uplinkoctets + downlinkoctets + uplinkdropoctets + downlinkdropoctets AS Octets, uplinkpackets + downlinkpackets + uplinkdroppackets + downlinkdroppackets AS Packets
+    FROM flows_step_1 AS input;
 
-CREATE OR REPLACE VIEW Projection_view AS
-SELECT * FROM Step_3;
+CREATE OR REPLACE VIEW projection_view AS
+SELECT * FROM flows_step_2;
 
-CREATE OR REPLACE VIEW Step_4 AS
-SELECT sessionid, eventtime, ecgieci as cellid
-FROM Step_2;
+CREATE OR REPLACE VIEW sessions_step_2 AS
+SELECT sessionid
+     , eventtime
+     , ecgieci as cellid
+FROM sessions_step_1;
 
 
-CREATE OR REPLACE VIEW Agg_view AS
+CREATE OR REPLACE VIEW agg_view AS
 SELECT sessionid, Octets, eventtime,
 Min(Octets) OVER w as minOctets, max(Octets) OVER w as maxOctets,
 Sum(Octets) OVER w as sumOctets, Count(Octets) OVER w as countOctets
-FROM Step_3 as s
+FROM flows_step_2 as s
 WINDOW w AS (PARTITION BY sessionid
-ORDER BY eventtime
-RANGE BETWEEN INTERVAL '60' MINUTE PRECEDING
-AND CURRENT ROW);
+            ORDER BY eventtime
+            RANGE BETWEEN INTERVAL '60' MINUTE PRECEDING AND CURRENT ROW);
 
 --Join Query
-CREATE OR REPLACE VIEW Join_view AS
-SELECT lhs.sessionid as sessionid, lhs.eventtime as eventtime, cellid, Octets, Packets
-from Step_3 as lhs
-INNER JOIN Step_4 as rhs
-ON (lhs.sessionid = rhs.sessionid AND lhs.eventtime BETWEEN rhs.eventtime - INTERVAL '5' MINUTE AND rhs.eventtime);
+CREATE OR REPLACE VIEW join_view AS
+SELECT lhs.sessionid as sessionid
+     , lhs.eventtime as eventtime
+     , cellid, Octets, Packets
+from flows_step_2 as lhs
+INNER JOIN sessions_step_2 
+        as rhs
+ON (lhs.sessionid = rhs.sessionid 
+    AND lhs.eventtime BETWEEN rhs.eventtime - INTERVAL '5' MINUTE AND rhs.eventtime
+   );
 
-CREATE OR REPLACE VIEW Join_n_Agg_view AS
-SELECT cellid, Octets, eventtime,
-Min(Octets) OVER w as minOctets, max(Octets) OVER w as maxOctets,
-Sum(Octets) OVER w as sumOctets, Count(Octets) OVER w as countOctets
-FROM Join_view as s
+CREATE OR REPLACE VIEW join_n_agg_view AS
+SELECT cellid
+     , Octets
+     , eventtime
+     , Min(Octets) OVER w as minOctets
+     , max(Octets) OVER w as maxOctets
+     , Sum(Octets) OVER w as sumOctets, Count(Octets) OVER w as countOctets
+FROM join_view as s
 WINDOW w AS (PARTITION BY cellid
-ORDER BY eventtime
-RANGE BETWEEN INTERVAL '60' MINUTE PRECEDING
-AND CURRENT ROW);
+            ORDER BY eventtime
+            RANGE BETWEEN INTERVAL '60' MINUTE PRECEDING AND CURRENT ROW);
 
 

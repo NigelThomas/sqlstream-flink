@@ -4,34 +4,24 @@ SCRIPT_DIR=$(cd `dirname $0` ; pwd -P)
 source $SCRIPT_DIR/environment.sh
 
 runtime=$1
+viewname=${2,,}
 
-case ${2,,} in
-	parse_view)
-		viewname=Parse_view
-		;;
-	projection_view)
-		viewname=Projection_view
-		;;
-	agg_view) 
-		viewname=Agg_view
-		;;
-	join_view)
-		viewname=Join_view
-		;;
-	join_n_agg_view)
-		viewname=Join_n_Agg_view
-		;;
+case ${viewname} in
+	parse_view | \
+	projection_view| \
+	agg_view| \
+	join_view| \
+	join_n_agg_view| \
 	join_n_agg_view2)
-		viewname=Join_n_Agg_view2
+		# view name is supported
 		;;
 	"")
-		echo "Valid view names are: Parse_view, Projection_view, Agg_view, Join_view, Join_n_Agg_view, Join_n_agg_view2"
-		echo "Running with Join_n_Agg_view (last view supported by SQLstream and Flink)"
-		viewname=Join_n_Agg_view
+		echo "Valid view names are: parse_view, projection_view, agg_view, join_view, join_n_agg_view, join_n_agg_view2"
+		echo "Running with join_n_agg_view (last view supported by SQLstream and Flink)"
+		viewname=join_n_agg_view
 		;;
 	*)
 		# probably an unknown view
-		viewname=$2
 		echo "$viewname is an unexpected view name"
 		# but try it anyway
 		

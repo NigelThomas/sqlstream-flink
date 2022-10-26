@@ -6,7 +6,7 @@ CREATE OR REPLACE SCHEMA EDR;
 SET SCHEMA 'EDR';
 SET PATH 'EDR';
 
-CREATE OR REPLACE FOREIGN STREAM Flows_fs(
+CREATE OR REPLACE FOREIGN STREAM flows_fs(
 load_ts VARCHAR(32),
 eventtime VARCHAR(32),
 creationtime VARCHAR(32),
@@ -89,9 +89,9 @@ DIRECTORY '/tmp',
 FILENAME_PATTERN 'flows_all.csv' 
 );
 
-CREATE OR REPLACE FOREIGN STREAM Sessions_fs
+CREATE OR REPLACE FOREIGN STREAM sessions_fs
 (
-load_ts TIMESTAMP,
+load_ts VARCHAR(32),
 sessionid VARCHAR(8),
 eventtime VARCHAR(32),
 recordtype VARCHAR(32),
@@ -137,10 +137,10 @@ uplinkoctets VARCHAR(16),
 uplinkpackets VARCHAR(16),
 downlinkoctets VARCHAR(16),
 downlinkpackets VARCHAR(16),
-uplinkdropoctets VARCHAR(8),
-uplinkdroppackets VARCHAR(8),
-downlinkdropoctets VARCHAR(8),
-downlinkdroppackets VARCHAR(8),
+uplinkdropoctets VARCHAR(16),
+uplinkdroppackets VARCHAR(16),
+downlinkdropoctets VARCHAR(16),
+downlinkdroppackets VARCHAR(16),
 triggercause VARCHAR(32),
 closeinfoinit VARCHAR(4),
 closeinfocausecode VARCHAR(8),
@@ -205,76 +205,83 @@ DIRECTORY '/tmp',
 FILENAME_PATTERN 'sessions_.*'
 );
 
-CREATE OR REPLACE VIEW Parse_view AS
-SELECT STREAM * FROM Flows_fs;
+CREATE OR REPLACE VIEW parse_view AS
+SELECT STREAM * FROM flows_fs;
 
-CREATE OR REPLACE VIEW Step_1 AS
+CREATE OR REPLACE VIEW flows_step_1 AS
     SELECT STREAM sessionid,
         CASE WHEN CHAR_LENGTH(eventtime) = 22 THEN SUBSTRING(eventtime, 1, 19) || '.000' ELSE eventtime END AS eventtime,
         CAST(uplinkoctets AS BIGINT) as uplinkoctets, CAST(downlinkoctets AS BIGINT) as downlinkoctets, 
         CAST(uplinkpackets AS BIGINT) as uplinkpackets, CAST(downlinkpackets AS BIGINT) as downlinkpackets, 
         CAST(uplinkdropoctets AS BIGINT) as uplinkdropoctets, CAST(downlinkdropoctets AS BIGINT) as downlinkdropoctets, 
         CAST(uplinkdroppackets AS BIGINT) as uplinkdroppackets, CAST(downlinkdroppackets AS BIGINT) as downlinkdroppackets
-    FROM Flows_fs AS input;
+    FROM flows_fs AS input;
 
-CREATE OR REPLACE VIEW Step_2 AS
-SELECT STREAM sessionid,
-CASE WHEN CHAR_LENGTH(eventtime) = 22 THEN SUBSTRING(eventtime, 1, 19) || '.000' ELSE eventtime END AS eventtime,
-ecgieci
-from Sessions_fs;
+CREATE OR REPLACE VIEW sessions_step_1 AS
+SELECT STREAM sessionid
+     , CASE WHEN CHAR_LENGTH(eventtime) = 22 THEN SUBSTRING(eventtime, 1, 19) || '.000' ELSE eventtime END AS eventtime
+     , ecgieci
+from sessions_fs;
 
-CREATE OR REPLACE VIEW Step_3 AS
-    SELECT STREAM sessionid as sessionid, CAST(eventtime AS TIMESTAMP) AS ROWTIME, uplinkoctets + downlinkoctets + uplinkdropoctets + downlinkdropoctets AS Octets, uplinkpackets + downlinkpackets + uplinkdroppackets + downlinkdroppackets AS Packets
-    FROM Step_1 AS input;
+CREATE OR REPLACE VIEW flows_step_2 AS
+    SELECT STREAM sessionid as sessionid
+         , CAST(eventtime AS TIMESTAMP) AS ROWTIME
+         , uplinkoctets + downlinkoctets + uplinkdropoctets + downlinkdropoctets AS Octets, uplinkpackets + downlinkpackets + uplinkdroppackets + downlinkdroppackets AS Packets
+    FROM flows_step_1 AS input;
 
-CREATE OR REPLACE VIEW Projection_view AS
-SELECT STREAM * FROM Step_3;
+CREATE OR REPLACE VIEW projection_view AS
+SELECT STREAM * FROM flows_step_2;
 
-CREATE OR REPLACE VIEW Step_4 AS
-SELECT STREAM sessionid,
-CAST(eventtime as TIMESTAMP) as ROWTIME, ecgieci as cellid
-FROM Step_2;
+CREATE OR REPLACE VIEW sessions_step_2 AS
+SELECT STREAM sessionid
+     , CAST(eventtime as TIMESTAMP) as ROWTIME
+     , ecgieci as cellid
+FROM sessions_step_1;
 
-CREATE OR REPLACE VIEW Agg_view AS
+CREATE OR REPLACE VIEW agg_view AS
 SELECT STREAM sessionid, Octets, 
 Min(Octets) OVER w as minOctets, max(Octets) OVER w as maxOctets,
 Sum(Octets) OVER w as sumOctets, Count(Octets) OVER w as countOctets
-FROM Step_3 as s 
+FROM flows_step_2 as s 
 WINDOW w AS (PARTITION BY sessionid
--- ORDER BY FLOOR(s.ROWTIME TO MINUTE)
-RANGE BETWEEN INTERVAL '60' MINUTE PRECEDING
-AND CURRENT ROW);
+            ORDER BY s.ROWTIME
+            RANGE BETWEEN INTERVAL '60' MINUTE PRECEDING AND CURRENT ROW);
 
 --Join Query
-CREATE OR REPLACE VIEW Join_view AS
+CREATE OR REPLACE VIEW join_view AS
+SELECT STREAM lhs.sessionid as sessionid
+     , cellid, Octets, Packets
+from flows_step_2 as lhs
+INNER JOIN sessions_step_2 
+    OVER (RANGE INTERVAL '5' MINUTE PRECEDING) 
+        as rhs
+ON (lhs.sessionid = rhs.sessionid 
+   );
+
+CREATE OR REPLACE VIEW join_n_agg_view AS
+SELECT STREAM cellid
+     , Octets
+     , Min(Octets) OVER w as minOctets
+     , max(Octets) OVER w as maxOctets
+     , Sum(Octets) OVER w as sumOctets, Count(Octets) OVER w as countOctets
+FROM join_view as s 
+WINDOW w AS (PARTITION BY cellid
+            -- ORDER BY s.ROWTIME
+            RANGE BETWEEN INTERVAL '60' MINUTE PRECEDING AND CURRENT ROW);
+
+CREATE OR REPLACE VIEW session_join_view AS
 SELECT STREAM lhs.sessionid as sessionid, cellid, Octets, Packets
-from Step_3 as lhs
-INNER JOIN Step_4 OVER (RANGE INTERVAL '5' MINUTE PRECEDING) as rhs
+from flows_step_2 as lhs
+INNER JOIN Sessions_step_2 OVER (PARTITION BY SESSION ON sessionid TIMEOUT AFTER INTERVAL '1' HOUR ROWS CURRENT ROW) as rhs
 ON (lhs.sessionid = rhs.sessionid );
 
-CREATE OR REPLACE VIEW Session_join_view AS
-SELECT STREAM lhs.sessionid as sessionid, cellid, Octets, Packets
-from Step_3 as lhs
-INNER JOIN Step_4 OVER (PARTITION BY SESSION ON sessionid TIMEOUT AFTER INTERVAL '1' HOUR ROWS CURRENT ROW) as rhs
-ON (lhs.sessionid = rhs.sessionid );
 
-CREATE OR REPLACE VIEW Join_n_agg_view AS
+CREATE OR REPLACE VIEW join_n_agg_view2 AS
 SELECT STREAM cellid, Octets, 
 Min(Octets) OVER w as minOctets, max(Octets) OVER w as maxOctets,
 Sum(Octets) OVER w as sumOctets, Count(Octets) OVER w as countOctets
-FROM Join_view as s 
+FROM join_view as s 
 WINDOW w AS (PARTITION BY cellid
-RANGE BETWEEN INTERVAL '60' MINUTE PRECEDING
-AND CURRENT ROW)
-;
-
-CREATE OR REPLACE VIEW Join_n_agg_view2 AS
-SELECT STREAM cellid, Octets, 
-Min(Octets) OVER w as minOctets, max(Octets) OVER w as maxOctets,
-Sum(Octets) OVER w as sumOctets, Count(Octets) OVER w as countOctets
-FROM Join_view as s 
-WINDOW w AS (PARTITION BY cellid
-ORDER BY FLOOR(s.ROWTIME TO MINUTE)
-RANGE BETWEEN INTERVAL '60' MINUTE PRECEDING
-AND INTERVAL '1' MINUTE PRECEDING)
-;
+            -- ORDER BY FLOOR(s.ROWTIME TO MINUTE)
+            RANGE BETWEEN INTERVAL '60' MINUTE PRECEDING
+            AND INTERVAL '1' MINUTE PRECEDING);
