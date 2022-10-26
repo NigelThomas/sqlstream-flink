@@ -434,7 +434,8 @@ parser.add_argument("-F","--flows_fileprefix", default="flows_",help="prefix for
 parser.add_argument("--filesuffix", default=".csv",help="suffix for output files")
 parser.add_argument("-R","--recs_per_file",type=int, default=1000000, help="Max records per file")
 parser.add_argument("-d","--output_delimiter", default=out_delim_default,help="delimiter for output file")
-
+parser.add_argument("--flows_lateness_secs", type=int, default=0, help="max lateness for flows data")
+parser.add_argument("--sessions_lateness_secs", type=int, default=0, help="max lateness for sessions data")
 # TODO read the cell tower ids from a file rather than making them up
 parser.add_argument("-c","--cell_towers", type=int, default=400,help="number of distinct cell towers")
 
@@ -451,9 +452,17 @@ else:
     logger.info("Waiting %d seconds between microbatches" % args.trickle_secs)
 logger.info("There will be %d concurrent sessions; %d percent of them will have flows" %(args.number_sessions, args.match_flow_pct))
 logger.info("For every session record there will be %f flow bursts" % args.flow_ratio)
-logger.info("%d different cell towers are defined" % args.cell_towers)
+if args.sessions_lateness_secs > 0:
+    logger.info("Session data may be %d seconds late or more, falling exponentially" % args.sessions_lateness_secs)
+else:
+    logger.info("Session data is perfectly ordered")
+if args.flows_lateness_secs > 0:
+    logger.info("Flow data may be %d seconds late or more, falling exponentially" % args.flows_lateness_secs)
+else:
+    logger.info("Flow data is perfectly ordered")
 logger.info("Output will be written to session files starting %s and flow files starting %s with a suffix of %s" % (args.sessions_fileprefix, args.flows_fileprefix, args.filesuffix))
 logger.info("Files are CSV with '%s' as the delimiter and will be rotated after every %d records" % (args.output_delimiter, args.recs_per_file))
+logger.info("%d different cell towers are defined" % args.cell_towers)
 logger.info("Currently no headers are generated")
 
 rcount = 0
@@ -501,10 +510,20 @@ for rec_time_secs in range(args.start_time, run_end_time, args.interval_secs):
         milliseconds = (float) (scount * args.interval_secs)/ num_session_rows       
         rec_plus_millis = rec_time_secs + milliseconds
 
-        # trim off any microsecs to leave millisecs (truncate not round)
-        eventtime = datetime.utcfromtimestamp(rec_plus_millis).strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+        # filetime determines which file the record is added to
         filetime = datetime.utcfromtimestamp(rec_plus_millis).strftime('%Y-%m-%d-%H-%M-%S')
-        
+
+        # if we want disordered data, randomly choose how late this row is (compared to rec_plus_millis)
+        # we use 6 as the cut off so minimising the number of late rows
+        if args.sessions_lateness_secs > 0:
+            adjustment_secs = random.expovariate(1) * args.sessions_lateness_secs / 6
+            #adjustment_secs = random.randint(0,args.sessions_lateness_secs)
+            #logger.debug("adjustment_secs=%f" % adjustment_secs)
+        else:
+            adjustment_millis = 0
+
+        # trim off any microsecs to leave millisecs (truncate not round)
+        eventtime = datetime.utcfromtimestamp(rec_plus_millis-adjustment_secs).strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
         celltower = random.choice(celltowers)
 
         if sessions_file['records'] >= args.recs_per_file:
@@ -531,13 +550,25 @@ for rec_time_secs in range(args.start_time, run_end_time, args.interval_secs):
     for flow in flow_sample:
 
         # step milliseconds as we walk through the interval
+        # NB milliseconds are in fractions of a second
         milliseconds = (float) (fcount * args.interval_secs)/ num_flow_bursts       
         rec_plus_millis = rec_time_secs + milliseconds
 
-        # trim off any microsecs to leave millisecs (truncate not round)
-        eventtime = datetime.utcfromtimestamp(rec_plus_millis).strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+        # filetime determines which file the record is added to
         filetime = datetime.utcfromtimestamp(rec_plus_millis).strftime('%Y-%m-%d-%H-%M-%S')
 
+        # if we want disordered data, randomly choose how late this row is (compared to rec_plus_millis)
+        # we use 6 as the cut off so minimising the number of late rows
+        if args.flows_lateness_secs > 0:
+            adjustment_secs = random.expovariate(1) * args.flows_lateness_secs / 6
+            #adjustment_secs = random.randint(0,args.flows_lateness_secs)
+        else:
+            adjustment_secs = 0
+
+        
+
+        # trim off any microsecs to leave millisecs (truncate not round)
+        eventtime = datetime.utcfromtimestamp(rec_plus_millis-adjustment_secs).strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
 
         if flows_file['records'] >= args.recs_per_file:
             close_file(flows_file)

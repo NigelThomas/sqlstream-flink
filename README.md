@@ -116,36 +116,23 @@ The benchmark expects that SQLstream and Flink are already installed on the host
     cat sessions_*.csv > /tmp/sessions_all.csv
     ```
 
-## Deploying sharded pipelines in SQLstream
+# Running the benchmark tests 
 
-1. Start SQLstream s-Server, running as a background task
-    ```
-    $HOME/sqlstream/8.1.1*/s-Server/bin/s-Server --daemon &
-    ```
-2. Load the schema and define SQL pipelines (pumps)
-    ```
-    $HOME/sqlstream/8.1.1*/s-Server/bin/sqllineClient --run=catalog.distributed.sql
-    ```
-3. Run the application with 2 shards. The result stream reports avg_rows_per_second updated every second
-    ```
-    $HOME/sqlstream/8.1.1*/s-Server/bin/sqllineClient --run=run.distributed.sql
-    ```
-4. While tests are running, you may monitor physical memory and CPU% using the `top` command. You can record stats using `iostat`.
-5. Stop the test.
-6. Edit `run.distributed.sql` to set `num_shards = 1` and modify the `ALTER PUMP` statement as described in inline comments. Then:
-    ```
-    $HOME/sqlstream/8.1.1*/s-Server/bin/sqllineClient --run=run.distributed.sql
-    ```
-# Running the benchmark tests using SQLstream s-Server
+Use the `runTest.sh` script. This has two parameters:
+
+* runtime: this must be supplied and can be `SQLstream` or `Flink` (any case accepted). You can abbreviate `SQLstream` to `S` or `SQL` and you can abbreviate `Flink` to `F`.
+* viewname: can be any of the views mentioned above (`Parse_view`,`Projection_view`,`Agg_view`,`Join_view`,`Join_n_Agg_view`,`Join_n_Agg_view2`) but note that `Join_n_Agg_view2` is not supported by Flink. If ommitted then `Join_n_Agg_view` is used. This parameter will accept any case.
+
+## Run the benchmark tests using SQLstream s-Server
 
 1. Ensure your environment is set (if this isn't already set from your `~/.profile` or `~/.bashrc`)
     ```
     source environment.sh
     ```
 2. Run the throughput query on any one of the views mentioned in the earlier section 
-(`Parse_view`,`Projection_view`,`Agg_view`,`Join_view`,`Join_n_Agg_view`)
+(`Parse_view`,`Projection_view`,`Agg_view`,`Join_view`,`Join_n_Agg_view`,`Join_n_Agg_view2`)
     ```
-    ./runTest.sh SQLSTREAM <viewname> ## e.g., ./runTest.sh SQLSTREAM Agg_view
+    ./runTest.sh SQLSTREAM <viewname>  ## e.g., ./runTest.sh SQLSTREAM Agg_view
     ```
    * The `runTest.sh` script will stop the Flink cluster and start s-Server (if necessary)
    * The script reloads the schema for each run
@@ -153,17 +140,22 @@ The benchmark expects that SQLstream and Flink are already installed on the host
    * The second column in the output shows rows/second
    * While tests are running, you may monitor physical memory and CPU% using the `top` or `vmstat` commands. 
    * use Cntrl-C to stop test
-3. Finally, stop s-Server:
+3. Finally, you stop s-Server:
     ```
     kill -TERM `jps | grep AspenVJdbc | awk '{print $1}'`
     ```
-# Run the benchmark tests using Apache Flink.
+   * If you have sourced `environment.sh` you can stop s-Server using a bash function defined there:
+    ```
+    stopsServer
+    ```
+
+## Run the benchmark tests using Apache Flink.
 
 1. Ensure your environment is set (if this isn't already set from your `~/.profile` or `~/.bashrc`)
     ```
     source environment.sh
     ```
-2. Install the schema and run the throughput query on any one of the views mentioned in the earlier section. Repeat tests with different view names (`Parse_view`,`Projection_view`,`Agg_view`,`Join_view`,`Join_n_Agg_view`)
+2. Install the schema and run the throughput query on any one of the views mentioned in the earlier section (except `Join_n_Agg_view2`). Repeat tests with different view names (`Parse_view`,`Projection_view`,`Agg_view`,`Join_view`,`Join_n_Agg_view`)
     ```
     $ ./runTest.sh FLINK <viewname> 
     ```
@@ -178,7 +170,7 @@ The benchmark expects that SQLstream and Flink are already installed on the host
     $FLINK_HOME/bin/stop-cluster.sh
     ```
 
-# Benchmark Results
+## Benchmark Results
 
 * With Generated EDR Data
 * On a laptop with Intel Core i7-10875H
@@ -201,6 +193,30 @@ The benchmark expects that SQLstream and Flink are already installed on the host
 | | SQLstream | 1.7GB of 2GB Max | 149K | 268 | 1.4 | 106K | 572 | 
 | `Join_n_agg_view2` (1-minute offset) | SQLstream | 1.2GB of 2GB Max | 727K | 1310 | 4 | 181K | 978 |
 
+# Deploying sharded pipelines in SQLstream
+
+1. Start SQLstream s-Server, running as a background task
+    ```
+    $SQLSTREAM_HOME/bin/s-Server --daemon &
+    ```
+   * If you have sourced `environment.sh` you can execute a function:
+    ```
+    startsServer
+    ```
+2. Load the schema and define SQL pipelines (pumps)
+    ```
+    $SQLSTREAM_HOME/bin/sqllineClient --run=catalog.distributed.sql
+    ```
+3. Run the application with 2 shards. The result stream reports avg_rows_per_second updated every second
+    ```
+    $SQLSTREAM_HOME/bin/sqllineClient --run=run.distributed.sql
+    ```
+4. While tests are running, you may monitor physical memory and CPU% using the `top` command. You can record stats using `vmstat`.
+5. Stop the test.
+6. Edit `run.distributed.sql` to set `num_shards = 1` and modify the `ALTER PUMP` statement as described in inline comments. Then:
+    ```
+    $HOME/sqlstream/8.1.1*/s-Server/bin/sqllineClient --run=run.distributed.sql
+    ```
 # Contents of this repository
 
 | File | Description
@@ -208,14 +224,14 @@ The benchmark expects that SQLstream and Flink are already installed on the host
 | `.gitignore` | gitignore file
 | `README.md` | This file
 | `assets` | Directory containing a development build of SQLstream s-Server
-| `catalog.distributed.sql` | TBA 
+| `catalog.distributed.sql` | Deploys SQLstream schema for sharded pipeline 
 | `edrgen.md` | README for `edrgen.py`
 | `edrgen.py` | The data generator for these benchmark tests
 | `environment.sh` | script to set environment for SQLstream and Flink
-| `eval_2022_12.lic` | a SQLstream license file
-| `flink.sql` | The Flink SQL script for creating the test schema
+| `eval_2022_12.lic` | a SQLstream license file expires 31-Dec-2022
+| `flink.sql` | The Apache Flink SQL script for creating the test schema
 | `repro.sql` | TBA
-| `run.distributed.sql` | TBA
+| `run.distributed.sql` | Executes the sharded SQLstream deployment
 | `runSetup.sh` | script to install SQLstream and Flink
 | `runTest.sh` | script to read from any one of the test views in SQLstream or Flink
 | `sqlstream.sql` | The SQLstream SQL script for creating the test schema

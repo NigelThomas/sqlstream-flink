@@ -16,3 +16,57 @@ export SQLSTREAM_HOME=$HOME/sqlstream/${SQLSTREAM_VERSION}/s-Server
 
 export PATH=$PATH:$FLINK_HOME/bin:$SQLSTREAM_HOME/bin
 
+function stopsServer() {
+    $SQLSTREAM_HOME/bin/serverReady
+    if [ $? -eq 0 ]
+    then
+        echo "INFO - stopping SQLstream s-Server"
+        kill -TERM `jps | grep AspenVJdbc | awk '{print $1}'`
+    fi
+}
+
+function startsServer () {
+    # if the server is not ready, bring it up
+    $SQLSTREAM_HOME/bin/serverReady
+    result=$?
+
+    if [ $result -ne 0 ]
+    then
+        # start server
+        echo "INFO - starting SQLstream s-Server"
+        $SQLSTREAM_HOME/bin/s-Server --daemon &
+        # wait for server to start
+        while [ $result -ne 0 ]
+        do
+            sleep 2
+            $SQLSTREAM_HOME/bin/serverReady
+            result=$?
+        done
+        sleep 5
+    fi
+}
+
+function stopFlink() {
+    # just stop without checking - the script takes care of it
+    $FLINK_HOME/bin/stop-cluster.sh
+}
+
+function startFlink() {
+    # just start -the script takes care of it
+    $FLINK_HOME/bin/start-cluster.sh
+}
+
+function benchmark-status() {
+    $SQLSTREAM_HOME/bin/serverReady
+
+    for p in TaskManagerRunner StandaloneSessionClusterEntrypoint
+    do
+        if jps | grep $p &> /dev/null
+        then
+            echo "Flink $p is running"
+        else
+            echo "Flink $p is not running"
+        fi
+    done
+
+}

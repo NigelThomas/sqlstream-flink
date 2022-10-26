@@ -43,31 +43,8 @@ case ${runtime^^} in
 		# check for a licence (for information only at this stage)
 		$SQLSTREAM_HOME/bin/showLicenses.sh
 
-		# check that Flink IS running (locally)
-		jps | grep TaskManagerRunner
-		if [ $? -eq 0 ]
-		then
-			echo "WARNING - Apache Flink cluster is running"
-			$FLINK_HOME/bin/stop-cluster.sh
-		fi
-
-		# if the server is not ready, bring it up
-		$SQLSTREAM_HOME/bin/serverReady
-		result=$?
-
-		if [ $result -ne 0 ]
-		then
-			# start server
-			$SQLSTREAM_HOME/bin/s-Server --daemon &
-			# wait for server to start
-			while [ $result -ne 0 ]
-			do
-				sleep 2
-				$SQLSTREAM_HOME/bin/serverReady
-				result=$?
-			done
-			sleep 5
-		fi
+		stopFlink
+		startsServer
 
 		# refresh the catalog, in case it has not been installed before
 		$SQLSTREAM_HOME/bin/sqllineClient --incremental=true --run=$SCRIPT_DIR/sqlstream.sql
@@ -76,21 +53,8 @@ case ${runtime^^} in
 		;;
 
 	F|FLINK)
-		# Check that s-Server is NOT running
-		$SQLSTREAM_HOME/bin/serverReady
-		if [ $? -eq 0 ]
-		then
-			echo "WARNING - stopping SQLstream s-Server"
-			kill -TERM `jps | grep AspenVJdbc | awk '{print $1}'`
-		fi
-
-		# check that Flink IS running (locally)
-		jps | grep TaskManagerRunner
-		if [ $? -eq 1 ]
-		then
-			echo "WARNING - starting Apache Flink cluster"
-			$FLINK_HOME/bin/start-cluster.sh
-		fi
+		stopsServer
+		startFlink
 
 		if [ "$viewname" == "Join_n_Agg_view2" ]
 		then
