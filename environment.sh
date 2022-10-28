@@ -1,7 +1,7 @@
 # set environment variables for the SQLstream / Flink comparison
 # source this from your .profiel or .bashrc
 
-export FLINK_VERSION=flink-1.15.2
+export FLINK_VERSION=flink-1.15.1
 export FLINK_HOME=$HOME/$FLINK_VERSION
 
 ## Please set SQLSTREAM_HOME

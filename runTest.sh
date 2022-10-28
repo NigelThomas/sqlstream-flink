@@ -49,6 +49,18 @@ case ${runtime^^} in
 		if [ "$viewname" == "Join_n_Agg_view2" ]
 		then
 			echo "Warning: Join_n_Agg_view2 is not defined for Flink"
+		elif [ -n "$EXPLAIN_PLAN" ]
+		then
+			cat flink.sql > /tmp/throughput.sql
+			echo "EXPLAIN PLAN FOR SELECT * " >> /tmp/throughput.sql
+			if [[ "$viewname" =~ "Agg_view" ]]
+			then
+				echo ",count(minOctets) + count(maxOctets) + count(sumOctets) + count(countOctets) as countTotal" >> /tmp/throughput.sql
+			fi
+			echo "FROM (select PROCTIME() as proc_time, * from $viewname) AS a;" >> /tmp/throughput.sql
+
+			$FLINK_HOME/bin/sql-client.sh embedded -f /tmp/throughput.sql
+
 		else
 			cat flink.sql > /tmp/throughput.sql
 			echo "SELECT TUMBLE_START(a.proc_time, INTERVAL '1' SECOND) as clocktime, COUNT(*) as recs_per_sec, max(eventtime) as max_event_time_$viewname" >> /tmp/throughput.sql

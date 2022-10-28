@@ -182,16 +182,15 @@ Use the `runTest.sh` script. This has two parameters:
 |                       | SQLstream  | 1GB of 2GB Max | 238K | 1.6 | 1.7 | 140K | 1.75
 | `projection_view` (10 of 70 columns) | Flink | 1GB of 2GB Max | 154K | 1 | 2.0 | 77K | 1  
 | | SQLstream | 1GB of 2GB Max | 881K | 5.7 | 1.9 | 463K | 6
-| `agg_view (Min, Max, Sum, Count)` | Flink | 5GB of 8GB Max | 58K | 1 | 8.8 | 6.5K | 
+| `agg_view (Min, Max, Sum, Count)` | Flink | 5GB of 8GB Max | 44K | 1 | 9 | 5K | 
 1
-| | SQLstream | 1.1GB of 2GB Max | 452K | 7.8 | 1.6 | 282K | 43 
+| | SQLstream | 1.1GB of 2GB Max | 452K | 7.8 | 1.6 | 282K | 57 
 | `session_join_view` (60-minute session window) | Flink | NA | NA | NA | NA | NA | NA
 | SQLstream | 1.1GB of 2GB Max | 822K | - | 3.5 | 235K | - 
 | `join_view` (5-minute sliding window) | Flink | 5GB of 8GB Max | 107K | 1 | 7 | 18K | 1
 | | SQLstream | 1.4GB of 2GB Max | 735K | 6.8 | 4 | 183K | 10 | 
-| `join_n_agg_view` (zero offset) | Flink | 5.4GB of 8GB Max | 555* | 1 | 3 | 185 | 1 (TaskExecutor crashed after processing 800K rows)
-| | SQLstream | 1.7GB of 2GB Max | 149K | 268 | 1.4 | 106K | 572 | 
-| `join_n_agg_view2` (1-minute offset) | SQLstream | 1.2GB of 2GB Max | 727K | 1310 | 4 | 181K | 978 |
+| `join_n_agg_view` (zero offset) | Flink | 6GB of 8GB Max | 96K | 1 | 4 | 24K | 1 
+| | SQLstream | 1.7GB of 2GB Max | 149K | 1.5 | 1.4 | 106K | 4.4 | 
 
 # Deploying sharded pipelines in SQLstream
 

@@ -266,7 +266,7 @@ SELECT STREAM cellid
      , Sum(Octets) OVER w as sumOctets, Count(Octets) OVER w as countOctets
 FROM join_view as s 
 WINDOW w AS (PARTITION BY cellid
-            -- ORDER BY s.ROWTIME
+            ORDER BY s.ROWTIME
             RANGE BETWEEN INTERVAL '60' MINUTE PRECEDING AND CURRENT ROW);
 
 CREATE OR REPLACE VIEW session_join_view AS
@@ -282,6 +282,6 @@ Min(Octets) OVER w as minOctets, max(Octets) OVER w as maxOctets,
 Sum(Octets) OVER w as sumOctets, Count(Octets) OVER w as countOctets
 FROM join_view as s 
 WINDOW w AS (PARTITION BY cellid
-            -- ORDER BY FLOOR(s.ROWTIME TO MINUTE)
+            ORDER BY FLOOR(s.ROWTIME TO MINUTE)
             RANGE BETWEEN INTERVAL '60' MINUTE PRECEDING
             AND INTERVAL '1' MINUTE PRECEDING);

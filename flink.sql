@@ -77,8 +77,7 @@ reserved8 VARCHAR(4),
 reserved9 VARCHAR(4),
 reserved10 VARCHAR(4),
 data_dt VARCHAR(16),
-WATERMARK FOR eventtime AS eventtime
---WATERMARK FOR eventtime AS eventtime - INTERVAL '1' HOUR
+WATERMARK FOR eventtime AS eventtime - INTERVAL '0.001' SECOND
 )
 WITH (
 'connector' = 'filesystem',
@@ -194,7 +193,7 @@ reserved6 VARCHAR(4),
 reserved7 VARCHAR(4),
 reserved8 VARCHAR(4),
 data_dt VARCHAR(16),
-WATERMARK FOR eventtime as eventtime
+WATERMARK FOR eventtime as eventtime - INTERVAL '0.001' SECOND
 )
 WITH(
 'connector' = 'filesystem',
