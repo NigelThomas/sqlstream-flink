@@ -11,67 +11,14 @@ This benchmark comparison is performed on EDRs (Electronic Data Records) generat
 The python script generates roughly 4 million flows records (EDRs) & a million sessions records  (EDRs) for every hour of operation of the wireless network. The number of hours of operation is passed as a parameter to the python script to generate the synthetic data.
 
 # The SQL pipeline
-The SQL pipeline performs a streaming join between Flows & Sessions streams and then compute time-series analytics, partitioned by cell-tower ID, to monitor the network performance. The SQL pipeline is described through a set of cascaded SQL views. These SQL views are are quite similar in syntax for both SQLstream as well as Flink.
+The SQL pipeline performs a streaming join between Flows & Sessions streams and then compute time-series analytics, partitioned by cell-tower ID, to monitor the network performance. The SQL pipeline is described through a set of cascaded SQL views. These SQL views are are quite similar in syntax for both SQLstream as well as Flink. See [sqlstream.sql](./sqlstream.sql) and [flink.sql](./flink.sql) for the detailed view definitions.
 
-1. `Flows_fs` - This is a relational stream abstraction defined on Flows EDRs collected in CSV files
-2. `Parse_view` - This view simply extracts and projects all the columns (around 70) from the `Flows_fs` stream
-    ```
-    CREATE OR REPLACE VIEW Parse_view AS
-    SELECT STREAM * FROM EDR.Flows_fs;
-    ```
-3. Projection_view - This view parses only 10 out of 70 columns from the Flows_fs stream
-    ```
-    CREATE OR REPLACE Projection_view AS
-    SELECT STREAM sessionid,
-      CAST(CASE WHEN CHAR_LENGTH(eventtime) = 22
-          THEN SUBSTRING(eventtime, 1, 19) || '.000'
-          ELSE eventtime END AS TIMESTAMP) AS ROWTIME,
-      CAST(uplinkoctets AS BIGINT) + CAST(downlinkoctets AS BIGINT) +
-      CAST(uplinkdropoctets AS BIGINT) + CAST(downlinkdropoctets AS BIGINT) as Octets,
-      CAST(uplinkpackets AS BIGINT) + CAST(downlinkpackets AS BIGINT) +
-      CAST(uplinkdroppackets AS BIGINT) + CAST(downlinkdroppackets AS BIGINT) as Packets
-    FROM Flows_fs AS input;
-
-    CREATE OR REPLACE Projection_Sessions_view AS
-    SELECT STREAM sessionid,
-      CAST(CASE WHEN CHAR_LENGTH(eventtime) = 22
-          THEN SUBSTRING(eventtime, 1, 19) || '.000'
-          ELSE eventtime END AS TIMESTAMP) AS ROWTIME,
-      ecgieci AS cellid
-    FROM Sessions_fs AS input;
-    ```
-4. `Agg_view` - This view computes time-series analytics on a 1-hour sliding window on Flows_fs, partitioned by sessionid
-    ```
-    CREATE OR REPLACE VIEW Agg_view AS
-    SELECT STREAM sessionid, Octets,
-      Min(Octets) OVER w as minOctets, max(Octets) OVER w as maxOctets,
-      Sum(Octets) OVER w as sumOctets, Count(Octets) OVER w as countOctets
-    FROM Projection_view as s
-    WINDOW w AS (PARTITION BY sessionid
-                RANGE BETWEEN INTERVAL '60' MINUTE PRECEDING
-                AND CURRENT ROW);
-    ```
-5. `Join_view` - This view joins Projection_view with Sessions_fs on a 5-minute window.
-    ```
-    CREATE OR REPLACE VIEW Join_view AS
-    SELECT STREAM lhs.sessionid as sessionid, cellid, Octets, Packets
-    FROM Projection_view as lhs
-      INNER JOIN
-        Projection_Sessions_view OVER (RANGE INTERVAL '5' MINUTE PRECEDING) as rhs
-      ON (lhs.sessionid = rhs.sessionid );
-    ```
-6. `Join_n_Agg_view` - This view computes time-series analytics on a 1-hour sliding window on the streaming result of the Join_view, partitioned by cellid (cell-tower ID)
-    ```
-    CREATE OR REPLACE VIEW Join_n_agg_view AS
-    SELECT STREAM cellid, Octets,
-        Min(Octets) OVER w as minOctets, max(Octets) OVER w as maxOctets,
-        Sum(Octets) OVER w as sumOctets, Count(Octets) OVER w as countOctets
-    FROM Join_view as s
-    WINDOW w AS (PARTITION BY cellid
-                ORDER BY FLOOR(s.ROWTIME TO MINUTE)
-                RANGE BETWEEN INTERVAL '60' MINUTE PRECEDING
-                AND INTERVAL '1' MINUTE PRECEDING);
-    ```
+1. `flows_fs` - This is a relational stream abstraction defined on Flows EDRs collected in CSV files
+2. `parse_view` - This view simply extracts and projects all the columns (around 70) from the `Flows_fs` stream
+3. `projection_view` - This view parses only 10 out of 70 columns from the Flows_fs stream
+4. `agg_view` - This view computes time-series analytics on a 1-hour sliding window on flows_fs, partitioned by sessionid
+5. `join_view` - This view joins flows and sessions pipelines on a 5-minute window.
+6. `join_n_agg_view` - This view computes time-series analytics on a 1-hour sliding window on the streaming result of the Join_view, partitioned by cellid (cell-tower ID)
 
 # Setting up SQLstream and Apache Flink
 The benchmark expects that SQLstream and Flink are already installed on the host machine. The following steps describe how to install SQLstream s-Server and Flink, and how to test the SQL pipelines.
@@ -98,7 +45,7 @@ The benchmark expects that SQLstream and Flink are already installed on the host
 
 1. Check `environment.sh` to verify you have the desired versions of Apache Flink and SQLstream s-Server
    * By default Apache Flink 1.15.2 will be downloaded from Apache; change the value of `FLINK_VERSION` if you want to test a different version
-   * This repository currently expects the installer for s-Server 8.1.1.20580-1497075c7 to be added to the assets directory (it is not included in the repository); to use another version, either:
+   * This repository currently expects the installer for s-Server 8.1.1.20580-1497075c7 to be added to the assets directory (it is **not** included in the repository); to use another version, either:
      1. Place the installer into the `assets` directory and modify the values of `SQLSTREAM_VERSION` and `SQLSTREAM_MAJOR_VERSION` in `environment.sh`
      2. Or set `SQLSTREAM_MAJOR_VERSION` to the version number of a generally available version that can be downloaded from http://downloads.sqlstream.com
 
@@ -106,11 +53,11 @@ The benchmark expects that SQLstream and Flink are already installed on the host
     ```
     ./runSetup.sh
     ```
-5. Generate the synthetic EDR data using the included python script (make sure to use `python3`). Run `python3 ./edrgen.py --help` for more help on parameters. This takes around 45-60 minutes depending on the speed of your processor and the parameters used. This command generates 360 mins (6 hours) of data:
+5. Generate the synthetic EDR data using the included python script (make sure to use `python3`). Run `python3 ./edrgen.py --help` for more help on parameters. This takes 20-40 minutes depending on the speed of your processor and the parameters used. You only need to do this once (unless you want to generate larger data sets). This command generates 360 mins (6 hours) of data:
     ```
     python3 ./edrgen.py -p 360
     ```
-6. Copy (and concatenate) generated data files to /tmp directory
+6. Copy (and concatenate) generated data files into /tmp directory
     ```
     cat flows_*.csv > /tmp/flows_all.csv
     cat sessions_*.csv > /tmp/sessions_all.csv
@@ -175,9 +122,11 @@ Use the `runTest.sh` script. This has two parameters:
 #### EXPLAIN PLAN
 If you need to see the Flink plan for the selected view, then set the `EXPLAIN_PLAN` environment variable to a any non-empty value before running the script.
 
-#### Analyze `jstat` GC metrics
+#### Capturing Flink configuration and GC metrics using `jstat`
 
-An `awk` script is provided to analyze the garbage collection metrics generated by `jstat`.
+An `awk` script is provided to analyze the garbage collection metrics generated by `jstat`. 
+
+For convenience the log file also captures some configuration information (FLINK_VERSION, the java version, non-defaulted properties from the Flink configuration file and the `ps` listing of the task manager showing the full command line).
 
 ```
 cat /tmp/flink-jstat.join_n_agg_view.20221101-170000.log | awk -f jstat.awk
@@ -186,7 +135,7 @@ cat /tmp/flink-jstat.join_n_agg_view.20221101-170000.log | awk -f jstat.awk
 The result looks like:
 
 ```
-Timestamp,HeapUsed,HeapCurrent,YGC,YGCT,FGC,FGCT,GCT,DeltaGC%,GC%
+Timestamp,HeapUsedGb,HeapCurrentGb,YGC,YGCT,FGC,FGCT,GCT,DeltaGC%,GC%
 0,12288,11194368,0,0.00,0,0.00,0.00, 0.000%, 0.000%
 30,3440640,11194368,22,1.15,0,0.00,1.15, 3.823%, 3.823%
 60,6752256,11194368,31,2.36,0,0.00,2.36, 4.040%, 3.932%
@@ -204,8 +153,8 @@ Timestamp,HeapUsed,HeapCurrent,YGC,YGCT,FGC,FGCT,GCT,DeltaGC%,GC%
 420,5547381,11194368,84,10.93,0,0.00,10.93, 2.443%, 2.602%
 450,7886848,11194368,87,11.49,0,0.00,11.49, 1.873%, 2.553%
 ```
-* `HeapUsed` is the sum of `S0U + S1U + EU + OU`
-* `HeapCurrent` is the sum of `S0C + S1C + EC + OC`
+* `HeapUsedGb` is the sum of `S0U + S1U + EU + OU`
+* `HeapCurrentGb` is the sum of `S0C + S1C + EC + OC`
 * `GC%` is time spent in GC divided by total time - `GCT*100/Timestamp`%
 * `DeltaGC%` us the time ratio for GC in the last period
 
