@@ -218,70 +218,81 @@ CREATE OR REPLACE VIEW flows_step_1 AS
     FROM flows_fs AS input;
 
 CREATE OR REPLACE VIEW sessions_step_1 AS
-SELECT STREAM sessionid
-     , CASE WHEN CHAR_LENGTH(eventtime) = 22 THEN SUBSTRING(eventtime, 1, 19) || '.000' ELSE eventtime END AS eventtime
-     , ecgieci
+SELECT STREAM sessionid,
+CAST (
+    CASE WHEN CHAR_LENGTH(eventtime) = 22 THEN SUBSTRING(eventtime, 1, 19) || '.000' 
+        ELSE eventtime 
+    END 
+    AS TIMESTAMP) AS eventtime,
+    ecgieci
 from sessions_fs;
 
 CREATE OR REPLACE VIEW flows_step_2 AS
     SELECT STREAM sessionid as sessionid
-         , CAST(eventtime AS TIMESTAMP) AS ROWTIME
-         , uplinkoctets + downlinkoctets + uplinkdropoctets + downlinkdropoctets AS Octets, uplinkpackets + downlinkpackets + uplinkdroppackets + downlinkdroppackets AS Packets
+         , CAST(eventtime as TIMESTAMP) as eventtime
+         , uplinkoctets + downlinkoctets + uplinkdropoctets + downlinkdropoctets AS Octets
+         , uplinkpackets + downlinkpackets + uplinkdroppackets + downlinkdroppackets AS Packets
     FROM flows_step_1 AS input;
 
-CREATE OR REPLACE VIEW projection_view AS
-SELECT STREAM * FROM flows_step_2;
+-- explicitly T-Sort the flows data here
+CREATE OR REPLACE VIEW flows_step_3 AS
+SELECT STREAM sessionid
+     , s.eventtime AS ROWTIME
+     , Octets
+     , Packets
+FROM flows_step_2 s
+ORDER BY s.eventtime WITHIN INTERVAL '30' SECOND;
 
+CREATE OR REPLACE VIEW projection_view AS
+SELECT STREAM * FROM flows_step_3;
+
+
+-- explictly t-sort the sessions data here
 CREATE OR REPLACE VIEW sessions_step_2 AS
 SELECT STREAM sessionid
-     , CAST(eventtime as TIMESTAMP) as ROWTIME
+     , eventtime as ROWTIME
      , ecgieci as cellid
-FROM sessions_step_1;
+FROM sessions_step_1
+ORDER BY eventtime WITHIN INTERVAL '30' SECOND;
 
 CREATE OR REPLACE VIEW agg_view AS
 SELECT STREAM sessionid, Octets, 
 Min(Octets) OVER w as minOctets, max(Octets) OVER w as maxOctets,
 Sum(Octets) OVER w as sumOctets, Count(Octets) OVER w as countOctets
-FROM flows_step_2 as s 
+FROM projection_view as s 
 WINDOW w AS (PARTITION BY sessionid
             ORDER BY s.ROWTIME
             RANGE BETWEEN INTERVAL '60' MINUTE PRECEDING AND CURRENT ROW);
 
 --Join Query
 CREATE OR REPLACE VIEW join_view AS
-SELECT STREAM lhs.sessionid as sessionid
-     , cellid, Octets, Packets
-from flows_step_2 as lhs
-INNER JOIN sessions_step_2 
-    OVER (RANGE INTERVAL '5' MINUTE PRECEDING) 
-        as rhs
-ON (lhs.sessionid = rhs.sessionid 
-   );
-
-CREATE OR REPLACE VIEW join_n_agg_view AS
-SELECT STREAM cellid
-     , Octets
-     , Min(Octets) OVER w as minOctets
-     , max(Octets) OVER w as maxOctets
-     , Sum(Octets) OVER w as sumOctets, Count(Octets) OVER w as countOctets
-FROM join_view as s 
-WINDOW w AS (PARTITION BY cellid
-            ORDER BY s.ROWTIME
-            RANGE BETWEEN INTERVAL '60' MINUTE PRECEDING AND CURRENT ROW);
+SELECT STREAM lhs.sessionid as sessionid, cellid, Octets, Packets
+from projection_view as lhs
+INNER JOIN sessions_step_2 OVER (RANGE INTERVAL '5' MINUTE PRECEDING) as rhs
+ON (lhs.sessionid = rhs.sessionid );
 
 CREATE OR REPLACE VIEW session_join_view AS
 SELECT STREAM lhs.sessionid as sessionid, cellid, Octets, Packets
-from flows_step_2 as lhs
-INNER JOIN Sessions_step_2 OVER (PARTITION BY SESSION ON sessionid TIMEOUT AFTER INTERVAL '1' HOUR ROWS CURRENT ROW) as rhs
+from projection_view as lhs
+INNER JOIN sessions_step_2 OVER (PARTITION BY SESSION ON sessionid TIMEOUT AFTER INTERVAL '1' HOUR ROWS CURRENT ROW) as rhs
 ON (lhs.sessionid = rhs.sessionid );
 
-
-CREATE OR REPLACE VIEW join_n_agg_view2 AS
+CREATE OR REPLACE VIEW join_n_agg_view AS
 SELECT STREAM cellid, Octets, 
 Min(Octets) OVER w as minOctets, max(Octets) OVER w as maxOctets,
 Sum(Octets) OVER w as sumOctets, Count(Octets) OVER w as countOctets
 FROM join_view as s 
 WINDOW w AS (PARTITION BY cellid
+             ORDER BY s.ROWTIME
+             RANGE BETWEEN INTERVAL '60' MINUTE PRECEDING AND CURRENT ROW)
+;
+
+CREATE OR REPLACE VIEW Join_n_agg_view2 AS
+SELECT STREAM cellid, Octets, 
+Min(Octets) OVER w as minOctets, max(Octets) OVER w as maxOctets,
+Sum(Octets) OVER w as sumOctets, Count(Octets) OVER w as countOctets
+FROM Join_view as s 
+WINDOW w AS (PARTITION BY cellid
             ORDER BY FLOOR(s.ROWTIME TO MINUTE)
-            RANGE BETWEEN INTERVAL '60' MINUTE PRECEDING
-            AND INTERVAL '1' MINUTE PRECEDING);
+            RANGE BETWEEN INTERVAL '60' MINUTE PRECEDING AND INTERVAL '1' MINUTE PRECEDING)
+;
