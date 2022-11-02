@@ -130,37 +130,79 @@ An `awk` script is provided to analyze the garbage collection metrics generated 
 
 For convenience the log file also captures some configuration information (FLINK_VERSION, the java version, non-defaulted properties from the Flink configuration file and the `ps` listing of the task manager showing the full command line).
 
+#### Example log file
 ```
-cat /tmp/flink-jstat.join_n_agg_view.20221101-170000.log | awk -f jstat.awk
+# FLINK_VERSION=flink-1.15.2
+# FLINK_HOME=/home/nigel/flink-1.15.2
+# JAVA_VERSION=
+#
+# Flink configuration:
+#
+# jobmanager.rpc.address: localhost
+# jobmanager.rpc.port: 6123
+# jobmanager.bind-host: localhost
+# jobmanager.memory.process.size: 1600m
+# taskmanager.bind-host: localhost
+# taskmanager.host: localhost
+# taskmanager.memory.process.size: 8g
+# taskmanager.memory.managed.fraction: 0.4
+# taskmanager.numberOfTaskSlots: 1
+# parallelism.default: 1
+# jobmanager.execution.failover-strategy: region
+# rest.address: localhost
+# rest.bind-address: localhost
+#
+# Task Manager Command line:
+# UID        PID  PPID  C STIME TTY      STAT   TIME CMD
+# nigel    17855 16894  0 15:28 pts/1    Sl+    0:00 /usr/lib/jvm/java-8-openjdk-amd64/bin/java -XX:+UseG1GC -Xmx3597035049 -Xms3597035049 -XX:MaxDirectMemorySize=880468305 -XX:MaxMetaspaceSize=268435456 -Dlog.file=/home/nigel/flink-1.15.2/log/flink-nigel-taskexecutor-0-c-3JWNJG3.log -Dlog4j.configuration=file:/home/nigel/flink-1.15.2/conf/log4j.properties -Dlog4j.configurationFile=file:/home/nigel/flink-1.15.2/conf/log4j.properties -Dlogback.configurationFile=file:/home/nigel/flink-1.15.2/conf/logback.xml -classpath /home/nigel/flink-1.15.2/lib/flink-cep-1.15.2.jar:/home/nigel/flink-1.15.2/lib/flink-connector-files-1.15.2.jar:/home/nigel/flink-1.15.2/lib/flink-csv-1.15.2.jar:/home/nigel/flink-1.15.2/lib/flink-json-1.15.2.jar:/home/nigel/flink-1.15.2/lib/flink-scala_2.12-1.15.2.jar:/home/nigel/flink-1.15.2/lib/flink-shaded-zookeeper-3.5.9.jar:/home/nigel/flink-1.15.2/lib/flink-table-api-java-uber-1.15.2.jar:/home/nigel/flink-1.15.2/lib/flink-table-planner-loader-1.15.2.jar:/home/nigel/flink-1.15.2/lib/flink-table-runtime-1.15.2.jar:/home/nigel/flink-1.15.2/lib/log4j-1.2-api-2.17.1.jar:/home/nigel/flink-1.15.2/lib/log4j-api-2.17.1.jar:/home/nigel/flink-1.15.2/lib/log4j-core-2.17.1.jar:/home/nigel/flink-1.15.2/lib/log4j-slf4j-impl-2.17.1.jar:/home/nigel/flink-1.15.2/lib/flink-dist-1.15.2.jar::: org.apache.flink.runtime.taskexecutor.TaskManagerRunner --configDir /home/nigel/flink-1.15.2/conf -D taskmanager.memory.network.min=746250577b -D taskmanager.cpu.cores=1.0 -D taskmanager.memory.task.off-heap.size=0b -D taskmanager.memory.jvm-metaspace.size=268435456b -D external-resources=none -D taskmanager.memory.jvm-overhead.min=858993472b -D taskmanager.memory.framework.off-heap.size=134217728b -D taskmanager.memory.network.max=746250577b -D taskmanager.memory.framework.heap.size=134217728b -D taskmanager.memory.managed.size=2985002310b -D taskmanager.memory.task.heap.size=3462817321b -D taskmanager.numberOfTaskSlots=1 -D taskmanager.memory.jvm-overhead.max=858993472b
+#
+Timestamp        S0C    S1C    S0U    S1U      EC       EU        OC         OU       MC     MU    CCSC   CCSU   YGC     YGCT    FGC    FGCT     GCT
+            0.2  0.0    0.0    0.0    0.0   184320.0 21504.0  3330048.0     0.0     4480.0 781.5  384.0   76.6       0    0.000   0      0.000    0.000
+           30.2  0.0   132096.0  0.0   132096.0 1601536.0 654336.0 1780736.0  1378304.0  58160.0 54440.6 7984.0 7387.9     49    3.617   0      0.000    3.617
+           60.2  0.0   26624.0  0.0   26624.0 1132544.0 542720.0 2355200.0  1976149.0  58416.0 54441.2 7984.0 7366.8    188   13.722   0      0.000   13.722
+           90.2  0.0   15360.0  0.0   15360.0 1145856.0 284672.0 2353152.0  1962898.5  58416.0 54600.7 7984.0 7370.6    359   25.353   0      0.000   25.353
+          120.2  0.0   39936.0  0.0   39936.0 1108992.0 1053696.0 2365440.0  1994240.5  58416.0 54656.8 7984.0 7370.6    524   36.703   0      0.000   36.703
+          150.2  0.0   15360.0  0.0   15360.0 168960.0 26624.0  3330048.0  1970363.0  58672.0 54737.2 7984.0 7372.3    695   48.983   0      0.000   48.983
+          180.2  0.0   19456.0  0.0   19456.0 164864.0 54272.0  3330048.0  1962290.0  58672.0 54807.8 7984.0 7375.6    874   61.290   0      0.000   61.290
+          210.2  0.0   15360.0  0.0   15360.0 168960.0 54272.0  3330048.0  2061548.0  58672.0 54822.4 7984.0 7375.6   1049   73.400   0      0.000   73.400
+          240.2  0.0   17408.0  0.0   17408.0 166912.0 116736.0 3330048.0  1907507.5  58672.0 54851.9 7984.0 7375.6   1226   85.738   0      0.000   85.738
+          270.2  0.0   12288.0  0.0   12288.0 172032.0  7168.0  3330048.0  1899520.0  58672.0 54871.2 7984.0 7375.6   1399   97.753   0      0.000   97.753
+          300.2  0.0   20480.0  0.0   20480.0 163840.0 152576.0 3330048.0  1904402.5  58928.0 54989.6 7984.0 7375.6   1572  109.689   0      0.000  109.689
+          329.8  0.0   10240.0  0.0   10240.0 174080.0 35840.0  3330048.0  2016909.0  59312.0 55161.3 8112.0 7412.0   1736  120.474   0      0.000  120.474
+```
+#### Log file transformed using `awk`
+
+```
+cat /tmp/flink-jstat.agg_view.20221102-152858.log | awk -f jstat.awk
 ```
 
-The result looks like:
+The result retains the configuration information and the remainder now looks like:
 
 ```
-Timestamp,HeapUsedGb,HeapCurrentGb,YGC,YGCT,FGC,FGCT,GCT,DeltaGC%,GC%
-0,12288,11194368,0,0.00,0,0.00,0.00, 0.000%, 0.000%
-30,3440640,11194368,22,1.15,0,0.00,1.15, 3.823%, 3.823%
-60,6752256,11194368,31,2.36,0,0.00,2.36, 4.040%, 3.932%
-90,7843840,11194368,37,3.29,0,0.00,3.29, 3.093%, 3.652%
-120,9056256,11194368,41,4.04,0,0.00,4.04, 2.510%, 3.367%
-150,8533453,11194368,45,4.67,0,0.00,4.67, 2.103%, 3.114%
-180,5523149,11194368,50,5.54,0,0.00,5.54, 2.913%, 3.081%
-210,9384845,11194368,53,5.99,0,0.00,5.99, 1.477%, 2.851%
-240,7690059,11194368,57,6.57,0,0.00,6.57, 1.927%, 2.736%
-270,4807659,11194368,61,7.21,0,0.00,7.21, 2.163%, 2.672%
-300,7630848,11194368,64,7.74,0,0.00,7.74, 1.750%, 2.580%
-330,6297600,11194368,73,9.17,0,0.00,9.17, 4.767%, 2.779%
-360,7831552,11194368,76,9.53,0,0.00,9.53, 1.183%, 2.646%
-390,5513060,11194368,80,10.20,0,0.00,10.20, 2.233%, 2.614%
-420,5547381,11194368,84,10.93,0,0.00,10.93, 2.443%, 2.602%
-450,7886848,11194368,87,11.49,0,0.00,11.49, 1.873%, 2.553%
+#
+Timestamp,HeapUsedGib,HeapCurrentGib,YGC,YGCT,FGC,FGCT,GCT,DeltaGC%,GC%
+0,0.021,3.352,0,0.00,0,0.00,0.00, 0.000%, 0.000%
+30,2.064,3.352,49,3.62,0,0.00,3.62,12.057%,12.057%
+60,2.428,3.352,188,13.72,0,0.00,13.72,33.683%,22.870%
+90,2.158,3.352,359,25.35,0,0.00,25.35,38.770%,28.170%
+120,2.945,3.352,524,36.70,0,0.00,36.70,37.833%,30.586%
+150,1.919,3.352,695,48.98,0,0.00,48.98,40.933%,32.655%
+180,1.942,3.352,874,61.29,0,0.00,61.29,41.023%,34.050%
+210,2.032,3.352,1049,73.40,0,0.00,73.40,40.367%,34.952%
+240,1.947,3.352,1226,85.74,0,0.00,85.74,41.127%,35.724%
+270,1.830,3.352,1399,97.75,0,0.00,97.75,40.050%,36.205%
+300,1.981,3.352,1572,109.69,0,0.00,109.69,39.787%,36.563%
+329,1.967,3.352,1736,120.47,0,0.00,120.47,37.190%,36.618%
 ```
-* `HeapUsedGb` is the sum of `S0U + S1U + EU + OU`
-* `HeapCurrentGb` is the sum of `S0C + S1C + EC + OC`
+
+* `HeapUsedGib` is the sum of `S0U + S1U + EU + OU`
+* `HeapCurrentGib` is the sum of `S0C + S1C + EC + OC`
 * `GC%` is time spent in GC divided by total time - `GCT*100/Timestamp`%
 * `DeltaGC%` us the time ratio for GC in the last period
 
 Any rows where there are no GC executions are dropped.
+
+This example shows quite significant GC activity (climbing up towards 40% of time used).
 
 ## Benchmark Results
 
