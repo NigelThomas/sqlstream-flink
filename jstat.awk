@@ -4,7 +4,7 @@ BEGIN { FS = " "; last_gc=-1; last_gct=0; last_time=0 }
 
 {
 	if (NR==1) {
-		printf("Timestamp,HeapUsed,HeapCurrent,YGC,YGCT,FGC,FGCT,GCT,DeltaGC%,GC%\n");
+		printf("Timestamp,HeapUsedGib,HeapCurrentGib,YGC,YGCT,FGC,FGCT,GCT,DeltaGC%,GC%\n");
 	} else {
 		time=int($1)
 		s0c=$2
@@ -21,8 +21,8 @@ BEGIN { FS = " "; last_gc=-1; last_gct=0; last_time=0 }
 		fgct=$17
 		gct=$18
 
-		heapused=s0u+s1u+eu+ou
-		heapcurrent=s0c+s1c+ec+oc
+		heapused=(s0u+s1u+eu+ou)/(1024*1024)
+		heapcurrent=(s0c+s1c+ec+oc)/(1024*1024)
 		gcratio=(time==0)?0:(100*gct)/time
 
 		if (last_gc < fgc+ygc) {
@@ -33,7 +33,7 @@ BEGIN { FS = " "; last_gc=-1; last_gct=0; last_time=0 }
 
 			delta_gcratio=(delta_time==0)?0:(delta_gct*100)/delta_time
 
-			printf("%d,%d,%d,%d,%.2f,%d,%.2f,%.2f,%6.3f%,%6.3f%\n",time,heapused,heapcurrent,ygc,ygct,fgc,fgct,gct,delta_gcratio,gcratio)
+			printf("%d,%.3f,%.3f,%d,%.2f,%d,%.2f,%.2f,%6.3f%,%6.3f%\n",time,heapused,heapcurrent,ygc,ygct,fgc,fgct,gct,delta_gcratio,gcratio)
 			last_gc = fgc+ygc
 			last_gct= gct
 			last_time=time
