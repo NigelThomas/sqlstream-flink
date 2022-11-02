@@ -98,8 +98,30 @@ case ${runtime^^} in
 			tmrpid=$(jps | grep TaskManagerRunner | awk '{print $1}')
 			tmrlog=/tmp/flink-jstat.${viewname}.$(date +%Y%m%d-%H%M%S).log
 
+			java -version 2>&1 | awk '{if (NF > 0) printf("# %s\n", $0)}' > $tmrlog
+
+			
+
+			cat >>$tmrlog <<!END
+#
+# FLINK_VERSION=$FLINK_VERSION
+# FLINK_HOME=$FLINK_HOME
+# JAVA_VERSION=$(java -version)
+#
+# Flink configuration:
+#
+!END
+			cat $FLINK_HOME/conf//flink-conf.yaml | grep -v "^#" | awk '{if (NF > 0) printf("# %s\n", $0)}' >> $tmrlog
+			cat >>$tmrlog <<!END
+#
+# Task Manager Command line:
+!END
+			ps -f $tmrpid | awk '{if (NF > 0) printf("# %s\n", $0)}' >> $tmrlog
+			cat >>$tmrlog <<!END
+#
+!END
 			# the background job should terminate when the Flink cluster is stopped
-			jstat -gc -t $tmrpid 30s &> $tmrlog &
+			jstat -gc -t $tmrpid 30s &>> $tmrlog &
 			echo "Logging jstat output to $tmrlog"
 
 			# Prepare the query

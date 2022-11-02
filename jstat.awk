@@ -3,7 +3,12 @@ BEGIN { FS = " "; last_gc=-1; last_gct=0; last_time=0 }
 # Takes output from jstat -gc -t and produces an easier to read summary
 
 {
-	if (NR==1) {
+	if ($1 == "#") {
+		# A line which has been added to give context; pass it through
+		print($0)
+	}
+	else if ($1 == "Timestamp") {
+		# heading line
 		printf("Timestamp,HeapUsedGib,HeapCurrentGib,YGC,YGCT,FGC,FGCT,GCT,DeltaGC%,GC%\n");
 	} else {
 		time=int($1)
