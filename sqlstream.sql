@@ -82,6 +82,8 @@ data_dt VARCHAR(16)
 )
 SERVER FILE_SERVER
 OPTIONS (
+-- using STATIC_FILES results in the stream closing at end of file, so the benchmark run ends (as for Flink)
+STATIC_FILES 'true',
 PARSER 'CSV',
 CHARACTER_ENCODING 'UTF-8',
 SKIP_HEADER 'false',
@@ -196,6 +198,7 @@ data_dt VARCHAR(16)
 )
 SERVER FILE_SERVER
 OPTIONS (
+STATIC_FILES 'true',
 PARSER 'CSV',
 CHARACTER_ENCODING 'UTF-8',
 SEPARATOR ',',

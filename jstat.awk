@@ -5,6 +5,7 @@ BEGIN { FS = " "; last_gc=-1; last_gct=0; last_time=0 }
 {
 	if ($1 == "#") {
 		# A line which has been added to give context; pass it through
+		# (no longer needed - context/config is added to a config log)
 		print($0)
 	}
 	else if ($1 == "Timestamp") {
