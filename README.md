@@ -79,6 +79,14 @@ The runtime engine (s-Server or the Flink cluster as required) is restarted for 
 
 Log files are produced into the `logs` directory as described in [Monitoring Benchmark Performance](#monitoring-benchmark-performance) below.
 
+To run only the SQLstream tests, or only the Flink tests, use:
+
+```
+./runAllTests.sh sqlstream
+
+./runAllTests.sh flink
+```
+
 # Running the benchmark tests individually
 
 Use the `runTest.sh` script. This has two parameters:
