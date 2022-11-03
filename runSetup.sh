@@ -73,6 +73,7 @@ case "$result" in
         ;;
     *)
         echo "... Installing $sserverInstallerDir/$sserverInstaller"
+        chmod 755 $sserverInstallerDir/$sserverInstaller
         $sserverInstallerDir/$sserverInstaller --mode unattended --email nouser@acompany.com --company acompany
         echo "aspen.sched.license.path=$SCRIPT_DIR" > $SQLSTREAM_HOME/aspen.custom.properties
         echo "SQLstream s-Server $SQLSTREAM_VERSION installed"
