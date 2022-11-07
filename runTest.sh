@@ -174,12 +174,12 @@ Task Manager Command line:
 			# Prepare the query
 			(
 				# prepare to inject start time; note that this includes SQL startup and schema install
-				# which we will allow for later using a 5 second decrement in the calculation of testsecs
+				# which we will allow for later using a 6 second decrement in the calculation of testsecs
 
 				q="'"
 				starttime="${q}$(date '+%Y-%m-%d %H:%M:%S')${q}"
 				cat flink.sql
-				echo "SELECT *, TIMESTAMPDIFF(SECOND, timestamp $starttime, clocktime)-5 as testsecs FROM ("
+				echo "SELECT *, TIMESTAMPDIFF(SECOND, timestamp $starttime, clocktime)-6 as testsecs FROM ("
 				echo "SELECT TUMBLE_START(a.proc_time, INTERVAL '1' SECOND) as clocktime, COUNT(*) as recs_per_sec, max(eventtime) as max_event_time_$viewname" 
 				if [[ "$viewname" =~ "agg_view" ]]
 				then

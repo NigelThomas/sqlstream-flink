@@ -244,6 +244,63 @@ WINDOW w AS (PARTITION BY sessionid
             ORDER BY eventtime
             RANGE BETWEEN INTERVAL '60' MINUTE PRECEDING AND CURRENT ROW);
 
+-- include variants of agg_view with varying window sizes 60m, 20m, 10m, 5m, 2m, 1m
+
+CREATE OR REPLACE VIEW agg_view_60m AS
+SELECT sessionid, Octets, eventtime,
+Min(Octets) OVER w as minOctets, max(Octets) OVER w as maxOctets,
+Sum(Octets) OVER w as sumOctets, Count(Octets) OVER w as countOctets
+FROM projection_view as s
+WINDOW w AS (PARTITION BY sessionid
+            ORDER BY eventtime
+            RANGE BETWEEN INTERVAL '60' MINUTE PRECEDING AND CURRENT ROW);
+
+CREATE OR REPLACE VIEW agg_view_20m AS
+SELECT sessionid, Octets, eventtime,
+Min(Octets) OVER w as minOctets, max(Octets) OVER w as maxOctets,
+Sum(Octets) OVER w as sumOctets, Count(Octets) OVER w as countOctets
+FROM projection_view as s
+WINDOW w AS (PARTITION BY sessionid
+            ORDER BY eventtime
+            RANGE BETWEEN INTERVAL '20' MINUTE PRECEDING AND CURRENT ROW);
+
+CREATE OR REPLACE VIEW agg_view_10m AS
+SELECT sessionid, Octets, eventtime,
+Min(Octets) OVER w as minOctets, max(Octets) OVER w as maxOctets,
+Sum(Octets) OVER w as sumOctets, Count(Octets) OVER w as countOctets
+FROM projection_view as s
+WINDOW w AS (PARTITION BY sessionid
+            ORDER BY eventtime
+            RANGE BETWEEN INTERVAL '10' MINUTE PRECEDING AND CURRENT ROW);
+
+CREATE OR REPLACE VIEW agg_view_5m AS
+SELECT sessionid, Octets, eventtime,
+Min(Octets) OVER w as minOctets, max(Octets) OVER w as maxOctets,
+Sum(Octets) OVER w as sumOctets, Count(Octets) OVER w as countOctets
+FROM projection_view as s
+WINDOW w AS (PARTITION BY sessionid
+            ORDER BY eventtime
+            RANGE BETWEEN INTERVAL '5' MINUTE PRECEDING AND CURRENT ROW);
+
+CREATE OR REPLACE VIEW agg_view_2m AS
+SELECT sessionid, Octets, eventtime,
+Min(Octets) OVER w as minOctets, max(Octets) OVER w as maxOctets,
+Sum(Octets) OVER w as sumOctets, Count(Octets) OVER w as countOctets
+FROM projection_view as s
+WINDOW w AS (PARTITION BY sessionid
+            ORDER BY eventtime
+            RANGE BETWEEN INTERVAL '2' MINUTE PRECEDING AND CURRENT ROW);
+
+CREATE OR REPLACE VIEW agg_view_1m AS
+SELECT sessionid, Octets, eventtime,
+Min(Octets) OVER w as minOctets, max(Octets) OVER w as maxOctets,
+Sum(Octets) OVER w as sumOctets, Count(Octets) OVER w as countOctets
+FROM projection_view as s
+WINDOW w AS (PARTITION BY sessionid
+            ORDER BY eventtime
+            RANGE BETWEEN INTERVAL '1' MINUTE PRECEDING AND CURRENT ROW);
+
+
 --Join Query
 CREATE OR REPLACE VIEW join_view AS
 SELECT lhs.sessionid as sessionid, lhs.eventtime as eventtime, cellid, Octets, Packets
