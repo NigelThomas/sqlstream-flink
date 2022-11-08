@@ -504,22 +504,22 @@ If you need to see the Flink plan for the selected view, then set the `EXPLAIN_P
 # Useful commands for managing SQLstream and Flink
 
 ## Starting s-Server
-    ```
+```
     $SQLSTREAM_HOME/bin/s-server --daemon &
-    ```
+```
 If you have sourced `environment.sh` you can start s-Server using a bash function defined there:
-    ```
+```
     startsServer
-    ```
+```
 
 ## Stopping s-Server
     ```
     kill -TERM `jps | grep AspenVJdbc | awk '{print $1}'`
     ```
 If you have sourced `environment.sh` you can stop s-Server using a bash function defined there:
-    ```
+```
     stopsServer
-    ```
+```
 ## Starting Flink
 ```
 $FLINK_HOME/bin/start-cluster.sh
