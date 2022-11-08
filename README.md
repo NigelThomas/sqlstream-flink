@@ -513,9 +513,9 @@ If you have sourced `environment.sh` you can start s-Server using a bash functio
 ```
 
 ## Stopping s-Server
-    ```
+```
     kill -TERM `jps | grep AspenVJdbc | awk '{print $1}'`
-    ```
+```
 If you have sourced `environment.sh` you can stop s-Server using a bash function defined there:
 ```
     stopsServer
