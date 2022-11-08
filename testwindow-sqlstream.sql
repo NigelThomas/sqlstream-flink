@@ -27,8 +27,8 @@ FROM testwindow_fs
 CREATE OR REPLACE VIEW testwindow_v2
 AS
 SELECT STREAM event_time, c1
-, MIN(event_time) OVER w as min_et
-, MAX(event_time) OVER w as max_et
+, CAST(MIN(event_time) OVER w AS TIME) as min_et
+, CAST(MAX(event_time) OVER w AS TIME) as max_et
 , MIN(c1) OVER w as min_c1
 , MAX(c1) OVER w as max_c1
 , COUNT(*) OVER w as cnt

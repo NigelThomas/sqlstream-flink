@@ -140,6 +140,7 @@ Use the `runTest.sh` script. This has two parameters:
 The test harness collects data while each test is running:
 
 | Log file suffix | Applies to | Contains
+| ---- | ---- | ----
 | `config.log` | Both | For SQLstream - license, java version, aspen properties <br/>For Flink - java version, config properties, and the Task Manager command line |
 | `top.log` | Both | Output from `top` at 10 second intervals, with summary info and details for the server process(es) - s-Server for SQLstream, and the Task Manager and Job Manager for Flink
 | `jstat.log` | Flink only | `jstat -gc -t <Task Manager pid> 10s` output from the Task Manager
