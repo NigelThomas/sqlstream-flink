@@ -144,7 +144,7 @@ The test harness collects data while each test is running:
 | `config.log` | Both | For SQLstream - license, java version, aspen properties <br/>For Flink - java version, config properties, and the Task Manager command line |
 | `top.log` | Both | Output from `top` at 10 second intervals, with summary info and details for the server process(es) - s-Server for SQLstream, and the Task Manager and Job Manager for Flink
 | `jstat.log` | Flink only | `jstat -gc -t <Task Manager pid> 10s` output from the Task Manager
-| `run.log` | Both | Records the SQL session query results (for Flink this also includes the catalog creation) 
+| `run.log` | Both | Records the SQL session query results (for Flink this also includes the catalog creation) and also collects stats such as peak RAM requirement (`VmHWM`), and `ps` stats `TIME`, `ELAPSED`, `%CPU`, `%MEM` and `RSZ`.
 
 Files are placed in the `logs/<engine-version>` directory and named `<date>.<time>.<viewname>.<log file suffix>`, for example `logs/sqlstream-8.1.1.2048798-d5538544/20221103.111733.projection_view.top.log` or `logs/flink-1.15.2/20221103.094843.projection_view.jstat.log`.
 
@@ -199,15 +199,21 @@ The Flink SQL client loads the catalog and then runs the query in the same sessi
 
 Note that the SQL client decorates its output with colour. The control characters are included in this log. Per [SQL Client Startup Options](https://nightlies.apache.org/flink/flink-docs-master/docs/dev/table/sqlclient/#sql-client-startup-options) there doesn't seem to be a way to remove this decoration.
 
+The run.log file includes a `ps` snapshot before and after running the Flink sql-client, a snapshot of `VmHWM` at the end of the process (for both Task Manager and the Job Manager / Scheduler). 
+
+
 ```
-^[[34;1m[INFO] Executing SQL from file.^[[0m
+  PID     TIME     ELAPSED %CPU %MEM   RSZ
+JobManager 00:00:02       00:01  222  0.6 176000
+TaskManager 00:00:01       00:01  112  0.6 166680
+[34;1m[INFO] Executing SQL from file.[0m
 
 Command history file path: /home/nigel/.flink-sql-history
-Flink SQL> ^[[34;1m[INFO] Session property has been set.^[[0m
+Flink SQL> [34;1m[INFO] Session property has been set.[0m
 
-Flink SQL> ^[[34;1m[INFO] Session property has been set.^[[0m
+Flink SQL> [34;1m[INFO] Session property has been set.[0m
 
-Flink SQL>
+Flink SQL> 
 > CREATE OR REPLACE TABLE flows_fs
 > (
 > load_ts VARCHAR(32),
@@ -216,14 +222,10 @@ Flink SQL>
 > eventtime as CASE WHEN CHAR_LENGTH(event_time) = 22 THEN TO_TIMESTAMP(SUBSTRING(event_time, 1, 19) || '.000') ELSE TO_TIMESTAMP(event_time) END ,
 > creationtime VARCHAR(32),
 > lastaccesstime VARCHAR(32),
-> flowid VARCHAR(8),
-> bearerid VARCHAR(4),
-> sessionid VARCHAR(16),
-> recordtype VARCHAR(32),
 
-<snipped the rest of the catalog>
+<snipped most of the catalog>
 
-Flink SQL>
+Flink SQL> 
 > CREATE OR REPLACE VIEW join_n_agg_view AS
 > SELECT cellid, Octets, eventtime,
 > Min(Octets) OVER w as minOctets, max(Octets) OVER w as maxOctets,
@@ -231,37 +233,40 @@ Flink SQL>
 > FROM join_view as s
 > WINDOW w AS (PARTITION BY cellid
 >             ORDER BY eventtime
->             RANGE BETWEEN INTERVAL '60' MINUTE PRECEDING AND CURRENT ROW)^[[34;1m[INFO] Execute statement succeed.^[[0m
+>             RANGE BETWEEN INTERVAL '60' MINUTE PRECEDING AND CURRENT ROW)[34;1m[INFO] Execute statement succeed.[0m
 
-Flink SQL>
->
-> SELECT *, TIMESTAMPDIFF(SECOND, timestamp '2022-11-03 12:58:10', clocktime)-5 as testsecs FROM (
+Flink SQL> 
+> 
+> SELECT *, TIMESTAMPDIFF(SECOND, timestamp '2022-11-14 15:29:31', clocktime)-6 as testsecs FROM (
 > SELECT TUMBLE_START(a.proc_time, INTERVAL '1' SECOND) as clocktime, COUNT(*) as recs_per_sec, max(eventtime) as max_event_time_projection_view
 > FROM (select PROCTIME() as proc_time, * from projection_view) AS a
 > GROUP BY TUMBLE(a.proc_time, INTERVAL '1' SECOND)
 > )+----+-------------------------+----------------------+--------------------------------+-------------+
 | op |               clocktime |         recs_per_sec | max_event_time_projection_view |    testsecs |
 +----+-------------------------+----------------------+--------------------------------+-------------+
-| +I | 2022-11-03 12:58:16.000 |                14384 |        2022-01-01 00:00:12.783 |           1 |
-| +I | 2022-11-03 12:58:17.000 |               173926 |        2022-01-01 00:02:48.088 |           2 |
-| +I | 2022-11-03 12:58:18.000 |               231469 |        2022-01-01 00:06:12.960 |           3 |
-| +I | 2022-11-03 12:58:19.000 |               255003 |        2022-01-01 00:10:00.836 |           4 |
+| +I | 2022-11-14 15:29:37.000 |                23424 |        2022-01-01 00:00:21.067 |           0 |
+| +I | 2022-11-14 15:29:38.000 |               247271 |        2022-01-01 00:04:01.663 |           1 |
+| +I | 2022-11-14 15:29:39.000 |               240624 |        2022-01-01 00:07:33.932 |           2 |
+| +I | 2022-11-14 15:29:40.000 |               304695 |        2022-01-01 00:12:06.773 |           3 |
 
-<snipped some results>
+<snipped the results>
 
-| +I | 2022-11-03 12:59:48.000 |               246568 |        2022-01-01 05:35:50.950 |          93 |
-| +I | 2022-11-03 12:59:49.000 |               255602 |        2022-01-01 05:39:37.546 |          94 |
-| +I | 2022-11-03 12:59:50.000 |               253697 |        2022-01-01 05:43:23.897 |          95 |
-| +I | 2022-11-03 12:59:51.000 |               251080 |        2022-01-01 05:47:07.985 |          96 |
-| +I | 2022-11-03 12:59:52.000 |               251083 |        2022-01-01 05:50:51.166 |          97 |
-| +I | 2022-11-03 12:59:53.000 |               248469 |        2022-01-01 05:54:31.329 |          98 |
-| +I | 2022-11-03 12:59:54.000 |               249770 |        2022-01-01 05:58:15.407 |          99 |
+| +I | 2022-11-14 15:30:49.000 |               323789 |        2022-01-01 05:45:47.085 |          72 |
+| +I | 2022-11-14 15:30:50.000 |               318173 |        2022-01-01 05:50:29.351 |          73 |
+| +I | 2022-11-14 15:30:51.000 |               329152 |        2022-01-01 05:55:21.968 |          74 |
 +----+-------------------------+----------------------+--------------------------------+-------------+
-Received a total of 99 rows
+Received a total of 75 rows
 
-Flink SQL>
+Flink SQL> 
 Shutting down the session...
 done.
+  PID     TIME     ELAPSED %CPU %MEM   RSZ
+JobManager 00:00:14       01:23 16.9  2.4 633620
+TaskManager 00:02:59       01:23  215 25.1 6556996
+
+Peak RAM usage (VmHWM)
+TaskManager  6.253 Gb
+JobManager  0.604 Gb
 ```
 ### Collecting configuration information
 
@@ -546,9 +551,9 @@ $FLINK_HOME/bin/stop-cluster.sh
 | `jstat.awk` | Awk file to analyse the `jstat -gc` output
 | `repro.sql` | TBA
 | `run.distributed.sql` | Executes the sharded SQLstream deployment
-| `runAllTests.sh` | script to run all tests in sequence for SQLstream and Flink 
+| `runAllTests.sh` | script to run 3 tests `projection_view`, `agg_view` and `join_view` in sequence for SQLstream and/or Flink 
 | `runSetup.sh` | script to install SQLstream and Flink
-| `runTest.sh` | script to read from any one of the test views in SQLstream or Flink
+| `runTest.sh` | script to read from any one of the test views in SQLstream or Flink. Test logs are sent to `logs/<engine-version>/<jdk-version>` - for example `logs/flink-1.16.0/openjdk_1.8.0_312/`
 | `sqlstream.sql` | The SQLstream SQL script for creating the test schema
 | `ss_template.sql` | The model SQLstream script used for reading from the test views
 
