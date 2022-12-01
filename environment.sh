@@ -1,24 +1,28 @@
 # set environment variables for the SQLstream / Flink comparison
 # source this from your .profiel or .bashrc
 
-export FLINK_VERSION=flink-1.15.2
+export FLINK_VERSION=flink-1.15.3
 export FLINK_HOME=$HOME/$FLINK_VERSION
 
 ## Please set SQLSTREAM_HOME
 export SQLSTREAM_MAJOR_VERSION=8.1.0
 # SQLSTREAM_VERSION includes the build number/hash
-export SQLSTREAM_VERSION=8.1.0.20521-7f16b5644
+#export SQLSTREAM_VERSION=8.1.0.20521-7f16b5644
 
 ## Please set SQLSTREAM_HOME
-#export SQLSTREAM_MAJOR_VERSION=8.1.1
+export SQLSTREAM_MAJOR_VERSION=8.1.1
 # SQLSTREAM_VERSION includes the build number/hash
-#export SQLSTREAM_VERSION=8.1.1.20603-d5538544e
+export SQLSTREAM_VERSION=8.1.1.20603-d5538544e
 
 
 export SQLSTREAM_HOME=$HOME/sqlstream/${SQLSTREAM_VERSION}/s-Server
 
 
 export PATH=$PATH:$FLINK_HOME/bin:$SQLSTREAM_HOME/bin
+
+function getJdkVersion() {
+    jdkversion=$(java -version 2>&1 | grep version | cut -d' ' -f 1,3 | tr -d '"' | tr " " "-")
+}
 
 function stopsServer() {
     $SQLSTREAM_HOME/bin/serverReady
@@ -87,9 +91,31 @@ function checkFlinkMemory() {
         let "tmps_size=$tmps_size*1024"
     fi
 
+    getJavaVersion
+    case $jdkversion in
+        *-11.*)
+            echo "INFO - $jdkversion configured"
+            ;;
+        *-1.8*)
+            echo "WARNING - $jdkversion configured; Apache Flink supports JDK8 but recommends JDK11"
+            ;;
+        *)
+            echo "ERROR - $jdkversion configured; Apache Flink recommendeds to use JDK11"
+            return 1
+    esac
+
+    if [[ ! "$javaversion" =~ "1.11" ]]
+    then
+        echo "WARNING - JDK $javaversion is not supported; Apache Flink recommends JDK11"
+    fi
+
     if [ $tmps_size -lt  8192 ]
     then
         echo "WARNING: Flink task manager memory process size under-specified at $tmps, should be 8192m / 8g at least"
+        echo "INFO: please edit $FLINK_HOME/conf/flink-conf.yaml and modify:"
+        echo "   taskmanager.memory.process.size: 8g"
+        echo "INFO: also consider reducing the memory managed fraction by adding:"
+        echo "   taskmanager.memory.managed.fraction: 0.2"
         return 1
     else
         if [ "${tmps_unit}" == "g" ]

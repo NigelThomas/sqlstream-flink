@@ -37,7 +37,7 @@ function getPsSnapshot() {
 	ps --format pid,time,etime,%cpu,%mem,rsz  $*
 }
 
-jdkversion=$(java -version 2>&1 | grep version | cut -d' ' -f 1,3 | tr -d '"' | tr " " "-")
+getJdkVersion
 
 runtime=${1,,}
 viewname=${2,,}

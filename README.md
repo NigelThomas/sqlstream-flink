@@ -23,18 +23,16 @@ The SQL pipeline performs a streaming join between Flows & Sessions streams and 
 6. `join_n_agg_view` - This view computes time-series analytics on a 1-hour sliding window on the streaming result of the Join_view, partitioned by cellid (cell-tower ID)
 
 # Setting up SQLstream and Apache Flink
-The benchmark expects that SQLstream and Flink are already installed on the host machine. The following steps describe how to install SQLstream s-Server and Flink, and how to test the SQL pipelines.
+The benchmark assists in the installation of Apache Flink and SQLstream s-Server onto the host machine. The following steps describe how to install SQLstream s-Server and Flink, and how to test the SQL pipelines.
+
+The current default versions are: Apache Flink 1.15.3 and SQLstream s-Server 8.1.1.
 
 ## Pre-requisites
 
-1. Extract the attached tarball above under home directory
-    ```
-    tar xzvf sqlstream_flink.tar.gz
-    cd ~/sqlstream_flink
-    ```
+### For SQLstream and data generator
 2. Make sure openjdk-8-jdk & lsb-core packages on ubuntu are installed:
     ```
-    sudo apt-get install -y openjdk-8-jdk lsb-core python3
+    sudo apt-get install -y openjdk-8-jdk-headless lsb-core python3
     ```
 3. Install libssl-1.1. If you are using Ubuntu 22.04, you need to `wget` it)
     ```
@@ -42,12 +40,19 @@ The benchmark expects that SQLstream and Flink are already installed on the host
     sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2.16_amd64.deb
     ```
    * For CentOS/RHEL use the package manager to install equivalent packages
+### For Apache Flink
+
+Recent versions of Apache Flink have deprecated JDK8 (although it is still supported). Apache Flink recommends installing JDK11:
+
+    ```
+    sudo apt-get install -y openjdk-11-jdk-headless 
+    ```
 
 ## Installing Apache Flink and SQLstream
 
 1. Check `environment.sh` to verify you have the desired versions of Apache Flink and SQLstream s-Server
-   * By default Apache Flink 1.15.2 will be downloaded from Apache; change the value of `FLINK_VERSION` if you want to test a different version
-   * This repository currently expects the installer for s-Server 8.1.1.20580-1497075c7 to be added to the assets directory (it is **not** included in the repository); to use another version, either:
+   * By default Apache Flink 1.15.3 will be downloaded from Apache; change the value of `FLINK_VERSION` if you want to test a different version
+   * This repository currently expects the installer for s-Server 8.1.1.20603-d5538544e to be available at http://downloads.sqlstream.com; to use another version, either:
      1. Place the installer into the `assets` directory and modify the values of `SQLSTREAM_VERSION` and `SQLSTREAM_MAJOR_VERSION` in `environment.sh`
      2. Or set `SQLSTREAM_MAJOR_VERSION` to the version number of a generally available version that can be downloaded from http://downloads.sqlstream.com
 
@@ -59,7 +64,7 @@ The benchmark expects that SQLstream and Flink are already installed on the host
     ```
     python3 ./edrgen.py -p 360
     ```
-6. Copy (and concatenate) generated data files into /tmp directory
+6. Copy (and concatenate) the generated data files into the `/tmp` directory
     ```
     cat flows_*.csv > /tmp/flows_all.csv
     cat sessions_*.csv > /tmp/sessions_all.csv
@@ -73,19 +78,29 @@ We recommend that you start by [running one or two tests individually](#running-
 ./runAllTests.sh
 ```
 
-This will execute all the tests for SQLstream, followed by all the tests for Apache Flink.
+This will execute all the tests for SQLstream, followed by all the tests for Apache Flink. To run all tests, you must use JDK8.
 
-The runtime engine (s-Server or the Flink cluster as required) is restarted for each test.
+If you want to run all tests for SQLstream on JDK8, and all tests for Flink on JDK11:
+
+* Set the java version to JDK8 using `sudo update-java-alternatives`:
+
+```
+$ update-java-alternatives -l
+java-1.11.0-openjdk-amd64      1111       /usr/lib/jvm/java-1.11.0-openjdk-amd64
+java-1.17.0-openjdk-amd64      1711       /usr/lib/jvm/java-1.17.0-openjdk-amd64
+java-1.8.0-openjdk-amd64       1081       /usr/lib/jvm/java-1.8.0-openjdk-amd64
+
+$ sudo update-java-alternatives -s /usr/lib/jvm/java-1.8.0-openjdk-amd64
+
+$ ./runAllTests.sh sqlstream
+
+$ sudo update-java-alternatives -s /usr/lib/jvm/java-1.11.0-openjdk-amd64
+
+$ ./runAllTests.sh flink
+
+The runtime engine (s-Server or the Flink cluster as required) is restarted for each individual test.
 
 Log files are produced into the `logs` directory as described in [Monitoring Benchmark Performance](#monitoring-benchmark-performance) below.
-
-To run only the SQLstream tests, or only the Flink tests, use:
-
-```
-./runAllTests.sh sqlstream
-
-./runAllTests.sh flink
-```
 
 # Running the benchmark tests individually
 
