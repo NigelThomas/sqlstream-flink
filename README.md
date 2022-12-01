@@ -44,9 +44,9 @@ The current default versions are: Apache Flink 1.15.3 and SQLstream s-Server 8.1
 
 Recent versions of Apache Flink have deprecated JDK8 (although it is still supported). Apache Flink recommends installing JDK11:
 
-    ```
-    sudo apt-get install -y openjdk-11-jdk-headless 
-    ```
+```
+sudo apt-get install -y openjdk-11-jdk-headless 
+```
 
 ## Installing Apache Flink and SQLstream
 
@@ -56,15 +56,15 @@ Recent versions of Apache Flink have deprecated JDK8 (although it is still suppo
      1. Place the installer into the `assets` directory and modify the values of `SQLSTREAM_VERSION` and `SQLSTREAM_MAJOR_VERSION` in `environment.sh`
      2. Or set `SQLSTREAM_MAJOR_VERSION` to the version number of a generally available version that can be downloaded from http://downloads.sqlstream.com
 
-4. Run the setup to install SQLstream s-Server (into `$HOME/sqlstream/<sqlstream_version>`) and Flink (into `$HOME/<flink_version>`). This can take 2-3 minutes.
+2. Run the setup to install SQLstream s-Server (into `$HOME/sqlstream/<sqlstream_version>`) and Flink (into `$HOME/<flink_version>`). This can take 2-3 minutes.
     ```
     ./runSetup.sh
     ```
-5. Generate the synthetic EDR data using the included python script (make sure to use `python3`). Run `python3 ./edrgen.py --help` for more help on parameters. This takes 20-40 minutes depending on the speed of your processor and the parameters used. You only need to do this once (unless you want to generate larger data sets). This command generates 360 mins (6 hours) of data:
+3. Generate the synthetic EDR data using the included python script (make sure to use `python3`). Run `python3 ./edrgen.py --help` for more help on parameters. This takes 20-40 minutes depending on the speed of your processor and the parameters used. You only need to do this once (unless you want to generate larger data sets). This command generates 360 mins (6 hours) of data:
     ```
     python3 ./edrgen.py -p 360
     ```
-6. Copy (and concatenate) the generated data files into the `/tmp` directory
+4. Copy (and concatenate) the generated data files into the `/tmp` directory
     ```
     cat flows_*.csv > /tmp/flows_all.csv
     cat sessions_*.csv > /tmp/sessions_all.csv
@@ -97,6 +97,7 @@ $ ./runAllTests.sh sqlstream
 $ sudo update-java-alternatives -s /usr/lib/jvm/java-1.11.0-openjdk-amd64
 
 $ ./runAllTests.sh flink
+```
 
 The runtime engine (s-Server or the Flink cluster as required) is restarted for each individual test.
 
